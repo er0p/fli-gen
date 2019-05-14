@@ -32,12 +32,16 @@ do
 	full_name=$(echo $tmp | awk -F ',' '{print $1}')
 	name=$(echo $full_name | awk '{print $1}')
 
-	team=$(echo $tmp | awk -F ',' '{print $(NF-4)}')
+	team=$(echo $tmp | awk -F ',' '{print $(NF-5)}')
 
 	if [[ "${team}" == *"Лазурные"* || "${team}" == *"Жёлтые"* || "${team}" == *"Красные"* ]] ; then
 		raw_role=$(echo $tmp | sed -r -e 's/^.*(Центральный защитник|Вратарь|Полузащитник|Защитник|Универсал|Форвард.*$)/\1/' | grep -oP '^.*?"')
+#		echo ${raw_role}
 		role=$(echo $raw_role | sed -r -e  "s/\s|\"//g" | sed -r -e  "s/,$//g" | awk '{print tolower($0)}')
-		rate=$(echo $tmp | grep -oP "${raw_role},?\"?[0-9]?,{1}[0-9]?" | grep -oP "[0-9].*$" | sed -r -e "s/,$//g" | sed -r -e "s/,/./g" )
+#		echo ${role}
+		#rate=$(echo $tmp | grep -oP "${raw_role},?\"?[0-9]?,{1}[0-9]?" | grep -oP "[0-9].*$" | sed -r -e "s/,$//g" | sed -r -e "s/,/./g" )
+		rate=$(echo $tmp | grep -oP "${raw_role},?\"?[0-9]?,{1}[0-9]{0,1}[^0-9]{1}" | grep -oP "[0-9].*$" | sed -r -e "s/\"?$//g" | sed -r -e "s/,*$//g" | sed -r -e "s/,/./g" )
+		#echo ${rate}
 		#echo $rate | tee -a numbers.in
 		#echo "${line} name:\"${name}\" role:\"${role}\" rate:\"${rate}\" team:\"${team}\""
 		echo "${line} ${rate} ${role} ${name}" | tee -a input.txt
