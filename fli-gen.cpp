@@ -127,9 +127,12 @@ int main() {
 		}
 	}
 #endif
+	
 	std::sort(pl_vec.begin(), pl_vec.end(), less_than_key());
+	bool fl, who_start = team0[0]._rate > team1[0]._rate;
 	for(auto it = pl_vec.begin(); it != pl_vec.end(); ++it, cnt++) {
-		if(cnt % 2) {
+		fl = who_start ? cnt % 2 : !(cnt %2);
+		if(fl) {
 			team0.insert(make_pair(it->_id, *it));
 		} else {
 			team1.insert(make_pair(it->_id, *it));
