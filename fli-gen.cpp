@@ -88,25 +88,154 @@ class Player {
 		
 };
 
-enum Role parse_role(string in) {
-	enum Role ret = UNDEF;
-	if(in == "вратарь") {
-		ret = KEEPER;
-	} else if (in == "защитник" || in == "центральныйзащитник") {
-		ret = DEFENDER;
-	} else if (in == "полузащитник" || in == "крайнийполузащитник") {
-		ret = MIDFIELDER;
-	} else if (in == "форвард") {
-		ret = FORWARD;
-	} else if (in == "универсал") {
-		ret = UNIVERSAL;
-	}
-	return ret;
-}
+class Team {
+	public:
+		Team(string name) : _name(name) {
+		}
+		void self_print() {
+			cout << "team name: " << _name << endl;
+			for(auto it = _map.begin(); it != _map.end(); ++it) {
+				it->second.print_myself();
+			}
+
+			cout << "team rate: " << _rate << endl;
+			cout << "possible role as:" <<
+				"\n\tKeeper     : " << _role_stat[KEEPER] <<
+				"\n\tDefender   : " << _role_stat[DEFENDER] <<
+				"\n\tMidfielder : " << _role_stat[MIDFIELDER] <<
+				"\n\tForward    : " << _role_stat[FORWARD] <<
+				"\n\tUniversal  : " << _role_stat[UNIVERSAL] <<
+				endl;
+		}
+		void insert(pair<int, class Player> p) {
+			_map.insert(p);
+			_rate += p.second._rate;
+			//double srate = 0.0;
+			//size_t cnt[NR] = {};
+			for(auto it = p.second._roles.begin(); it != p.second._roles.end(); ++it) {
+				_role_stat[*it]++;
+			}
+		}
+		map<int, class Player> _map;
+	private:
+		string _name;
+		double _rate;
+		size_t _role_stat[NR] = {};
+};
+
+struct less_than_key {
+    inline bool operator() (const class Player& a, const class Player& b) {
+        return (a._rate < b._rate);
+    }
+};
+
+class FliGen {
+	public:
+		FliGen() : _team0 ("red"), _team1 ("blue") {
+		};
+		FliGen(string t0_name, string t1_name) : _team0(t0_name), _team1(t1_name) {
+		};
+
+		void parseFile(string &path) {
+			ifstream in(path);
+			int key = 0;
+			char buf[1024];
+			double rate = 0;
+			double sum = 0;
+			string role, name;
+			bool keeper_fl = false;
+			size_t keeper_count = 0;
+			while(in >> key >> rate >> role >> name) {
+				Player pl;
+				cout << key << " " << rate << " " << role << " " << name << endl;
+				pl._id = key;
+				//name.erase(remove(name.begin(), name.end(), ' '), name.end());
+				pl._name = name;
+				pl._rate = rate;
+				memset(buf, 0,1024);
+				strncpy(buf, role.c_str(), role.length());
+				char *pch = strtok(buf,",");
+				while (pch != NULL) {
+					enum Role r = parse_role(std::string(pch));
+					if(r == KEEPER) {
+						keeper_fl = true;
+						if(0 == _team0._map.size()) {
+							_team0.insert(make_pair(key,pl));
+						} else {
+							_team1.insert(make_pair(key,pl));
+						}
+						keeper_count++;
+					}	
+					pl._roles.insert(r);
+					//cout << pch  << endl;
+					pch = strtok (NULL, ",");
+				}
+				if(!keeper_fl) {
+					_all_players.push_back(pl);	
+					//map.insert(make_pair(key,pl));
+				} 
+				keeper_fl = false;	
+				sum += rate;
+			}
+			cout << "sum: " << sum << " sum/2: " << sum/2.0 <<  endl;
+			
+			if(keeper_count--)
+				_team0._map.begin()->second._roles.insert(KEEPER);
+			if(keeper_count--)
+				_team1._map.begin()->second._roles.insert(KEEPER);
+		}
+
+		void splitOffer() {
+			size_t cnt = 0;
+			std::sort(_all_players.begin(), _all_players.end(), less_than_key());
+			bool fl, who_start = _team0._map.begin()->second._rate < _team1._map.begin()->second._rate;
+			for(auto it = _all_players.begin(); it != _all_players.end(); ++it, cnt++) {
+				fl = who_start ? cnt % 2 : !(cnt %2);
+				if(fl) {
+					_team0.insert(make_pair(it->_id, *it));
+				} else {
+					_team1.insert(make_pair(it->_id, *it));
+				}
+			}
+			
+			//print_team(team0, t0);
+			//print_team(team1, t1);
+
+		}
+
+		void printResult() {
+			cout << endl;
+			_team0.self_print();
+			cout << endl;
+			_team1.self_print();
+			cout << endl;
+		}
+	private:
+		enum Role parse_role(string in) {
+			enum Role ret = UNDEF;
+			if(in == "вратарь") {
+				ret = KEEPER;
+			} else if (in == "защитник" || in == "центральныйзащитник") {
+				ret = DEFENDER;
+			} else if (in == "полузащитник" || in == "крайнийполузащитник") {
+				ret = MIDFIELDER;
+			} else if (in == "форвард") {
+				ret = FORWARD;
+			} else if (in == "универсал") {
+				ret = UNIVERSAL;
+			}
+			return ret;
+		}
+		//map<int, class Player> _team0, _team1;
+		Team _team0, _team1;
+		vector<class Player> _all_players;
+};
+
+
 
 void print_version(char *app_0) {
 	printf("\n\n\nfli-gen (Football League InfoTeCS Generator)\n"
-			"\tCopyright (C) 2018-%s FLI Inc.\n"
+			"\tCopyright (C) 2019-%s FLI Inc.\n"
 			"\tCompiled on %s at %s\n",
 			&__DATE__[7],
 			__DATE__, __TIME__
@@ -119,95 +248,17 @@ void print_version(char *app_0) {
 	cout << "" << basename(app_0) << "\t"  << VERSION_STR << endl;
 }
 
-void print_team(std::map<int, class Player> &t, string &name) {
-	double srate = 0.0;
-	size_t cnt[NR] = {};
-	cout << "\n========= "<< name << " =========" << endl;
-	for(auto it = t.begin(); it != t.end(); ++it) {
-		it->second.print_myself();
-		srate += it->second._rate;
-		for(auto jt = it->second._roles.begin(); jt != it->second._roles.end(); ++jt) {
-			cnt[*jt]++;
-		}
-	}
-	cout << "total rate: " << srate << endl;
-	cout << "possible role as:" <<
-	        "\n\tKeeper     : " << cnt[KEEPER] <<
-		"\n\tDefender   : " << cnt[DEFENDER] <<
-	        "\n\tMidfielder : " << cnt[MIDFIELDER] <<
-	        "\n\tForward    : " << cnt[FORWARD] <<
-	        "\n\tUniversal  : " << cnt[UNIVERSAL] <<
-	       	endl;
-}
-
-struct less_than_key
-{
-    inline bool operator() (const class Player& a, const class Player& b)
-    {
-        return (a._rate < b._rate);
-    }
-};
-
 int main(int argc, char *argv[]) {
-	ifstream in("input.txt");
-	map<int, class Player> team0, team1, map;
-	vector<class Player> pl_vec;
-	int key = 0;
-	char buf[1024];
-	double rate = 0;
-	double sum = 0;
-	string role, name;
-	bool keeper_fl = false;
-	while(in >> key >> rate >> role >> name) {
-		Player pl;
-		cout << key << " " << rate << " " << role << " " << name << endl;
-		pl._id = key;
-		//name.erase(remove(name.begin(), name.end(), ' '), name.end());
-		pl._name = name;
-		pl._rate = rate;
-		memset(buf, 0,1024);
-		strncpy(buf, role.c_str(), role.length());
-		char *pch = strtok(buf,",");
-		while (pch != NULL) {
-			enum Role r = parse_role(std::string(pch));
-			if(r == KEEPER) {
-				keeper_fl = true;
-				if(0 == team0.size()) {
-					team0.insert(make_pair(key,pl));
-				} else {
-					team1.insert(make_pair(key,pl));
-				}
-			}	
-			pl._roles.insert(r);
-			//cout << pch  << endl;
-			pch = strtok (NULL, ",");
-		}
-		if(!keeper_fl) {
-			pl_vec.push_back(pl);	
-			//map.insert(make_pair(key,pl));
-		} 
-		keeper_fl = false;	
-		sum += rate;
+	string input_file;
+	FliGen fligen;
+	if(argc > 1) {
+		input_file = string(argv[1]);
+	} else {
+		input_file = "input.txt";
 	}
-	cout << "sum: " << sum << " sum/2: " << sum/2.0 <<  endl;
-	size_t cnt = 0;
-	
-	team0.begin()->second._roles.insert(KEEPER);
-	team1.begin()->second._roles.insert(KEEPER);
- 
-	std::sort(pl_vec.begin(), pl_vec.end(), less_than_key());
-	bool fl, who_start = team0.begin()->second._rate < team1.begin()->second._rate;
-	for(auto it = pl_vec.begin(); it != pl_vec.end(); ++it, cnt++) {
-		fl = who_start ? cnt % 2 : !(cnt %2);
-		if(fl) {
-			team0.insert(make_pair(it->_id, *it));
-		} else {
-			team1.insert(make_pair(it->_id, *it));
-		}
-	}
-	string t0 = "red", t1 = "blue";
-	print_team(team0, t0);
-	print_team(team1, t1);
+	fligen.parseFile(input_file);
+	fligen.splitOffer();
+	fligen.printResult();
 
 	print_version(argv[0]);
 }
