@@ -4,7 +4,7 @@ GIT_VER         :=$(patsubst refs/tags/%$(comma),%,$(filter refs/tags/%,$(shell 
 GIT_HASH	:=$(word 2,$(shell git log --no-walk -n1))
 GIT_VER_CFLAGS	:=-DGIT_VER=\"$(GIT_VER)\" -DGIT_HASH=\"$(GIT_HASH)\"
 
-CXXFLAGS := -std=c++11 $(GIT_VER_CFLAGS)
+CXXFLAGS := -std=c++14 $(GIT_VER_CFLAGS)
 TARGET := fli-gen
 SOURCES := fli-gen.cpp
 

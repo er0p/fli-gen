@@ -9,7 +9,7 @@
 #include <cstring>
 
 
-#define VERSION_STR "2.0"
+#define VERSION_STR "2.1"
 
 using namespace std;
 
@@ -81,9 +81,12 @@ class Player {
 		double _rate;
 		string _name;
 		set<int> _roles;
-		void print_myself() {
+		void self_print() {
 			//cout << "id: " << _id << " rate: " << _rate << " name: " << _name << endl;
 			cout << "id: " << setw(3) << _id << " rate: " << setw(5) << _rate << " name: " << std::left << setw(15) << _name << std::right <<  setw(15) << " roles: " << roles_to_str(_roles) <<  endl;
+		}
+		bool is_keeper() {
+			return _roles.find(KEEPER) != _roles.end();;
 		}
 		
 };
@@ -95,7 +98,7 @@ class Team {
 		void self_print() {
 			cout << "team name: " << _name << endl;
 			for(auto it = _map.begin(); it != _map.end(); ++it) {
-				it->second.print_myself();
+				(*it)->self_print();
 			}
 
 			cout << "team rate: " << _rate << endl;
@@ -107,27 +110,44 @@ class Team {
 				"\n\tUniversal  : " << _role_stat[UNIVERSAL] <<
 				endl;
 		}
-		void insert(pair<int, class Player> p) {
+		void insert(class Player *p) {
 			_map.insert(p);
-			_rate += p.second._rate;
+			//_rate += p->_rate;
+			//_rate += p->_rate;
 			//double srate = 0.0;
 			//size_t cnt[NR] = {};
-			for(auto it = p.second._roles.begin(); it != p.second._roles.end(); ++it) {
+			for(auto it = p->_roles.begin(); it != p->_roles.end(); ++it) {
 				_role_stat[*it]++;
 			}
+			calc_rate();
 		}
-		map<int, class Player> _map;
+		double calc_rate() {
+			_rate = 0.0;
+			memset(_role_stat, 0, sizeof _role_stat);
+			for(auto it = _map.begin(); it != _map.end(); ++it) {
+				_rate += (*it)->_rate;
+				for(auto jt = (*it)->_roles.begin(); jt != (*it)->_roles.end(); ++jt) {
+					_role_stat[*jt]++;
+				}
+			}
+			return _rate;
+		}
+
+		//map<int, class Player *> _map;
+		set<class Player *> _map;
+		double _rate;
 	private:
 		string _name;
-		double _rate;
 		size_t _role_stat[NR] = {};
 };
 
 struct less_than_key {
-    inline bool operator() (const class Player& a, const class Player& b) {
-        return (a._rate < b._rate);
+    inline bool operator() (const class Player *a, const class Player *b) {
+        return (a->_rate < b->_rate);
     }
 };
+
+
 
 class FliGen {
 	public:
@@ -135,6 +155,12 @@ class FliGen {
 		};
 		FliGen(string t0_name, string t1_name) : _team0(t0_name), _team1(t1_name) {
 		};
+		virtual ~FliGen() {
+			cout << __FUNCTION__ << endl;
+			for (auto it : _all_players) {
+				delete it;
+			}
+		}
 
 		void parseFile(string &path) {
 			ifstream in(path);
@@ -145,13 +171,14 @@ class FliGen {
 			string role, name;
 			bool keeper_fl = false;
 			size_t keeper_count = 0;
+			size_t total_count = 0;
 			while(in >> key >> rate >> role >> name) {
-				Player pl;
+				Player *pl = new Player();
 				cout << key << " " << rate << " " << role << " " << name << endl;
-				pl._id = key;
+				pl->_id = key;
 				//name.erase(remove(name.begin(), name.end(), ' '), name.end());
-				pl._name = name;
-				pl._rate = rate;
+				pl->_name = name;
+				pl->_rate = rate;
 				memset(buf, 0,1024);
 				strncpy(buf, role.c_str(), role.length());
 				char *pch = strtok(buf,",");
@@ -159,14 +186,15 @@ class FliGen {
 					enum Role r = parse_role(std::string(pch));
 					if(r == KEEPER) {
 						keeper_fl = true;
+						pl->_roles.insert(KEEPER);
 						if(0 == _team0._map.size()) {
-							_team0.insert(make_pair(key,pl));
+							_team0.insert(pl);
 						} else {
-							_team1.insert(make_pair(key,pl));
+							_team1.insert(pl);
 						}
 						keeper_count++;
 					}	
-					pl._roles.insert(r);
+					pl->_roles.insert(r);
 					//cout << pch  << endl;
 					pch = strtok (NULL, ",");
 				}
@@ -176,33 +204,65 @@ class FliGen {
 				} 
 				keeper_fl = false;	
 				sum += rate;
+				total_count++;
 			}
-			cout << "sum: " << sum << " sum/2: " << sum/2.0 <<  endl;
-			
-			if(keeper_count--)
-				_team0._map.begin()->second._roles.insert(KEEPER);
-			if(keeper_count--)
-				_team1._map.begin()->second._roles.insert(KEEPER);
+			_avg_rate = sum / total_count;
+			cout << endl << "sum: " << sum << " sum/2: " << sum/2.0 <<  " avg rate: " << _avg_rate <<  endl;
 		}
 
-		void splitOffer() {
+		void splitOfferV1() {
 			size_t cnt = 0;
 			std::sort(_all_players.begin(), _all_players.end(), less_than_key());
-			bool fl, who_start = _team0._map.begin()->second._rate < _team1._map.begin()->second._rate;
+			bool fl, who_start = (*_team0._map.begin())->_rate < (*_team1._map.begin())->_rate;
 			for(auto it = _all_players.begin(); it != _all_players.end(); ++it, cnt++) {
 				fl = who_start ? cnt % 2 : !(cnt %2);
 				if(fl) {
-					_team0.insert(make_pair(it->_id, *it));
+					_team0.insert(*it);
 				} else {
-					_team1.insert(make_pair(it->_id, *it));
+					_team1.insert(*it);
 				}
 			}
-			
-			//print_team(team0, t0);
-			//print_team(team1, t1);
-
 		}
 
+		void splitOfferV2() {
+			double delta;
+			size_t tries = 0;
+			splitOfferV1();
+			delta = (_team0.calc_rate() - _team1.calc_rate());
+			size_t ind = 0;	
+			auto tmp = _team0._map.begin();
+			while(tries++ < 99 && tmp != _team0._map.end() && abs(delta) >= 0.2) {
+				if((*tmp)->is_keeper()) {
+					tmp++;
+					continue;
+				}
+				auto it = std::find_if(_team1._map.begin(), _team1._map.end(), [&tmp,&delta] (auto &arg) {
+						if(arg->is_keeper()) {
+							return false;
+						}
+						double eps = ((*tmp)->_rate - arg->_rate) - delta;
+						bool ret = (eps >= 0.0) && (eps < 0.2);
+						return ret; 
+						}
+						);
+				if(it != _team1._map.end()) {
+					(*it)->self_print();
+					Player *p1 = *tmp, *p2 = *it;
+					_team0._map.erase(tmp);
+					_team1._map.erase(it);
+					_team0._map.insert(p2);
+					_team1._map.insert(p1);
+					tmp = _team0._map.begin();
+				} else {
+					tmp++;
+				}
+				delta = _team0.calc_rate() - _team1.calc_rate();
+			} 
+			cout << endl << "total tries (permutations) = " << tries << endl;
+			if(tries < 100) 
+				cout << "team ratings is equal, don't need any additional stuff" << endl;
+		}
+		
 		void printResult() {
 			cout << endl;
 			_team0.self_print();
@@ -226,9 +286,10 @@ class FliGen {
 			}
 			return ret;
 		}
+		double _avg_rate;
 		//map<int, class Player> _team0, _team1;
 		Team _team0, _team1;
-		vector<class Player> _all_players;
+		vector<class Player *> _all_players;
 };
 
 
@@ -257,7 +318,7 @@ int main(int argc, char *argv[]) {
 		input_file = "input.txt";
 	}
 	fligen.parseFile(input_file);
-	fligen.splitOffer();
+	fligen.splitOfferV2();
 	fligen.printResult();
 
 	print_version(argv[0]);
