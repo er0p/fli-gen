@@ -9,7 +9,7 @@
 #include <cstring>
 
 
-#define VERSION_STR "2.1"
+#define VERSION_STR "2.2"
 
 using namespace std;
 
@@ -275,7 +275,7 @@ class FliGen {
 			enum Role ret = UNDEF;
 			if(in == "вратарь") {
 				ret = KEEPER;
-			} else if (in == "защитник" || in == "центральныйзащитник") {
+			} else if (in == "защитник"  || in == "крайнийзащитник" || in == "центральныйзащитник") {
 				ret = DEFENDER;
 			} else if (in == "полузащитник" || in == "крайнийполузащитник") {
 				ret = MIDFIELDER;
