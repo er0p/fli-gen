@@ -7,11 +7,14 @@ GIT_VER_CFLAGS	:=-DGIT_VER=\"$(GIT_VER)\" -DGIT_HASH=\"$(GIT_HASH)\"
 CXXFLAGS := -std=c++14 -ggdb3 $(GIT_VER_CFLAGS)
 TARGET := fli-gen
 SOURCES := fli-gen.cpp
+BOT := fli-gen-bot
 
-all: $(TARGET)
+all: $(TARGET) $(BOT)
 
 $(TARGET):
 	$(CXX) $(CXXFLAGS) $(SOURCES) -o $@
+$(BOT):
+	go build $@.go
 
 parse_csv:
 	./fli-gen.sh ./fli.csv
@@ -19,6 +22,6 @@ parse_csv:
 
 .PHONY: clean parse_csv
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(BOT)
 	
 
