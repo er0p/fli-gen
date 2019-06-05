@@ -57,4 +57,6 @@ done < "$csv_file"
 
 echo "total: ${cnt} footballers"
 
+./fli-gen
+
 exit 0
