@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"reflect"
 	"time"
-	//"strconv"
+	"strconv"
 	"strings"
 	"io"
 	"io/ioutil"
@@ -19,6 +19,7 @@ import (
 )
 
 var g_debug bool
+const guest_log_filename = "guest.log"
 
 func main() {
 
@@ -75,6 +76,12 @@ func FliGenBot() {
 
 	bot.Debug = g_debug
 
+	f, err := os.OpenFile(guest_log_filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
 	fmt.Printf("BOT_DEBUG = %v\n", g_debug)
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -95,7 +102,7 @@ func FliGenBot() {
 	//Получаем обновления от бота
 	updates, err := bot.GetUpdatesChan(u)
 	time.Sleep(time.Millisecond * 500)
-	updates.Clear()
+//	updates.Clear()
 
 	for update := range updates {
 		if update.Message == nil {
@@ -124,7 +131,7 @@ func FliGenBot() {
 				log.Println("CMD:", cmd)
 				log.Println("ARG:", arg)
 			} else {
-				reply_str := fmt.Sprintf("TODO: just translate:\n%v\n", cmd)
+				reply_str := fmt.Sprintf("TODO: raw_msg:\n%v\n", cmd)
 				log.Println(reply_str)
 			}
 			switch cmd {
@@ -136,7 +143,9 @@ func FliGenBot() {
 			case "/whoami":
 				b.Reset()
 				b.WriteString("You are: ")
-				b.WriteString(update.Message.From.FirstName,)
+				b.WriteString(update.Message.From.FirstName)
+				id_str := strconv.Itoa(update.Message.From.ID)
+				b.WriteString(id_str)
 				reply_str = b.String()
 			}
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply_str)
@@ -205,7 +214,21 @@ func FliGenBot() {
 	
 
 		}
+		whois_str := WhoIsIt (update, f)
+		snitch_msg := tgbotapi.NewMessage(47241589, "Hey, Father! Someone tried to play with me :)\n" + whois_str)
+		bot.Send(snitch_msg)
 	}
+}
+
+
+func WhoIsIt (msg tgbotapi.Update, f *os.File) string {
+	id := strconv.Itoa(msg.Message.From.ID)
+	ret := msg.Message.From.FirstName + " " + msg.Message.From.LastName + " @" + msg.Message.From.UserName + "\nUser ID: " + id
+	if _, err := f.WriteString(ret); err != nil {
+		log.Println(err)
+	}
+
+	return ret
 }
 // DownloadFile will download a url to a local file. It's efficient because it will
 // write as it downloads and not load the whole file into memory.

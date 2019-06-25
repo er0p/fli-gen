@@ -7,9 +7,10 @@
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
+#include <cmath>
 
 
-#define VERSION_STR "2.2"
+#define VERSION_STR "2.3"
 
 using namespace std;
 
@@ -213,7 +214,8 @@ class FliGen {
 		void splitOfferV1() {
 			size_t cnt = 0;
 			std::sort(_all_players.begin(), _all_players.end(), less_than_key());
-			bool fl, who_start = (*_team0._map.begin())->_rate < (*_team1._map.begin())->_rate;
+			bool fl, who_start = true;
+			//bool fl, who_start = (*_team0._map.begin())->_rate < (*_team1._map.begin())->_rate;
 			for(auto it = _all_players.begin(); it != _all_players.end(); ++it, cnt++) {
 				fl = who_start ? cnt % 2 : !(cnt %2);
 				if(fl) {
@@ -228,39 +230,82 @@ class FliGen {
 			double delta;
 			size_t tries = 0;
 			splitOfferV1();
-			delta = (_team0.calc_rate() - _team1.calc_rate());
+
+			//this->printResult();
 			size_t ind = 0;	
 			auto tmp = _team0._map.begin();
-			while(tries++ < 99 && tmp != _team0._map.end() && abs(delta) >= 0.2) {
-				if((*tmp)->is_keeper()) {
-					tmp++;
-					continue;
-				}
-				auto it = std::find_if(_team1._map.begin(), _team1._map.end(), [&tmp,&delta] (auto &arg) {
-						if(arg->is_keeper()) {
+
+			delta = (_team0.calc_rate() - _team1.calc_rate());
+			if(0 == ((int)(10.0*delta)) % 2) {
+				//cout << "even case delta: " << delta << endl;
+				while(tmp != _team0._map.end()) {
+					if((*tmp)->is_keeper()) {
+						tmp++;
+						continue;
+					}
+					//cout << "team0 palyer name: "  << (*tmp)->_name << '\n';
+					auto it = std::find_if(_team1._map.begin(), _team1._map.end(), [&tmp,&delta] (auto &arg) {
+							if(arg->is_keeper()) {
 							return false;
-						}
-						double eps = ((*tmp)->_rate - arg->_rate) - delta;
-						bool ret = (eps >= 0.0) && (eps < 0.2);
-						return ret; 
-						}
-						);
-				if(it != _team1._map.end()) {
-					(*it)->self_print();
-					Player *p1 = *tmp, *p2 = *it;
-					_team0._map.erase(tmp);
-					_team1._map.erase(it);
-					_team0._map.insert(p2);
-					_team1._map.insert(p1);
-					tmp = _team0._map.begin();
-				} else {
-					tmp++;
+							}
+							//cout << "team1 palyer name: "  << arg->_name << '\n';
+							double cur_del = ((*tmp)->_rate - arg->_rate) - (delta/2.0);
+							//cout << (*tmp)->_rate - arg->_rate   <<  " == " << (delta/2.0) << '\n';
+							bool ret = (cur_del > -0.05) && (cur_del < 0.05);
+							//cout << " ret: " << ret  <<  '\n';
+							return ret; 
+							}
+							);
+					if(it != _team1._map.end()) {
+						(*it)->self_print();
+						Player *p1 = *tmp, *p2 = *it;
+						_team0._map.erase(tmp);
+						_team1._map.erase(it);
+						_team0._map.insert(p2);
+						_team1._map.insert(p1);
+						tmp = _team0._map.begin();
+		                                //cout << "t0: " << _team0.calc_rate() << " t1: " <<  _team1.calc_rate() << endl;
+		                                _team0.calc_rate();_team1.calc_rate();
+						break;
+					} else {
+						tmp++;
+					}
 				}
-				delta = _team0.calc_rate() - _team1.calc_rate();
-			} 
-			cout << endl << "total tries (permutations) = " << tries << endl;
-			if(tries < 100) 
-				cout << "team ratings is equal, don't need any additional stuff" << endl;
+			} else {
+				while(tries++ < 99 && tmp != _team0._map.end() && abs(delta) >= 0.2) {
+					if((*tmp)->is_keeper()) {
+						tmp++;
+						continue;
+					}
+					cout << "team0 palyer name: "  << (*tmp)->_name << '\n';
+					auto it = std::find_if(_team1._map.begin(), _team1._map.end(), [&tmp,&delta] (auto &arg) {
+							if(arg->is_keeper()) {
+							return false;
+							}
+							cout << "team1 palyer name: "  << arg->_name << '\n';
+							double eps = ((*tmp)->_rate - arg->_rate) - delta;
+							bool ret = (eps >= 0.0) && (eps < 0.2);
+							cout << "eps: "  << eps << " ret: " << ret  <<  '\n';
+							return ret; 
+							}
+							);
+					if(it != _team1._map.end()) {
+						(*it)->self_print();
+						Player *p1 = *tmp, *p2 = *it;
+						_team0._map.erase(tmp);
+						_team1._map.erase(it);
+						_team0._map.insert(p2);
+						_team1._map.insert(p1);
+						tmp = _team0._map.begin();
+					} else {
+						tmp++;
+					}
+					delta = _team0.calc_rate() - _team1.calc_rate();
+				} 
+				cout << endl << "total tries (permutations) = " << tries << endl;
+				if(tries < 100) 
+					cout << "team ratings is equal, don't need any additional stuff" << endl;
+			}
 		}
 		
 		void printResult() {
