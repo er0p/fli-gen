@@ -233,18 +233,27 @@ class FliGen {
 
 			//this->printResult();
 			size_t ind = 0;	
-			auto tmp = _team0._map.begin();
+			Team *tmp_team0 = &_team0;
+			Team *tmp_team1 = &_team1;
 
-			delta = (_team0.calc_rate() - _team1.calc_rate());
+			auto r0 = tmp_team0->calc_rate(), r1= tmp_team1->calc_rate();
+			if(r0 > r1) {
+				tmp_team0 = &_team1;
+				tmp_team1 = &_team0;
+			}
+
+			auto tmp = tmp_team0->_map.begin();
+
+			delta = (tmp_team0->calc_rate() - tmp_team1->calc_rate());
 			if(0 == ((int)(10.0*delta)) % 2) {
 				//cout << "even case delta: " << delta << endl;
-				while(tmp != _team0._map.end()) {
+				while(tmp != tmp_team0->_map.end()) {
 					if((*tmp)->is_keeper()) {
 						tmp++;
 						continue;
 					}
 					//cout << "team0 palyer name: "  << (*tmp)->_name << '\n';
-					auto it = std::find_if(_team1._map.begin(), _team1._map.end(), [&tmp,&delta] (auto &arg) {
+					auto it = std::find_if(tmp_team1->_map.begin(), tmp_team1->_map.end(), [&tmp,&delta] (auto &arg) {
 							if(arg->is_keeper()) {
 							return false;
 							}
@@ -256,29 +265,29 @@ class FliGen {
 							return ret; 
 							}
 							);
-					if(it != _team1._map.end()) {
+					if(it != tmp_team1->_map.end()) {
 						(*it)->self_print();
 						Player *p1 = *tmp, *p2 = *it;
-						_team0._map.erase(tmp);
-						_team1._map.erase(it);
-						_team0._map.insert(p2);
-						_team1._map.insert(p1);
-						tmp = _team0._map.begin();
-		                                //cout << "t0: " << _team0.calc_rate() << " t1: " <<  _team1.calc_rate() << endl;
-		                                _team0.calc_rate();_team1.calc_rate();
+						tmp_team0->_map.erase(tmp);
+						tmp_team1->_map.erase(it);
+						tmp_team0->_map.insert(p2);
+						tmp_team1->_map.insert(p1);
+						tmp = tmp_team0->_map.begin();
+		                                //cout << "t0: " << tmp_team0.calc_rate() << " t1: " <<  tmp_team1.calc_rate() << endl;
+		                                tmp_team0->calc_rate();tmp_team1->calc_rate();
 						break;
 					} else {
 						tmp++;
 					}
 				}
 			} else {
-				while(tries++ < 99 && tmp != _team0._map.end() && abs(delta) >= 0.2) {
+				while(tries++ < 99 && tmp != tmp_team0->_map.end() && abs(delta) >= 0.2) {
 					if((*tmp)->is_keeper()) {
 						tmp++;
 						continue;
 					}
 					cout << "team0 palyer name: "  << (*tmp)->_name << '\n';
-					auto it = std::find_if(_team1._map.begin(), _team1._map.end(), [&tmp,&delta] (auto &arg) {
+					auto it = std::find_if(tmp_team1->_map.begin(), tmp_team1->_map.end(), [&tmp,&delta] (auto &arg) {
 							if(arg->is_keeper()) {
 							return false;
 							}
@@ -289,18 +298,18 @@ class FliGen {
 							return ret; 
 							}
 							);
-					if(it != _team1._map.end()) {
+					if(it != tmp_team1->_map.end()) {
 						(*it)->self_print();
 						Player *p1 = *tmp, *p2 = *it;
-						_team0._map.erase(tmp);
-						_team1._map.erase(it);
-						_team0._map.insert(p2);
-						_team1._map.insert(p1);
-						tmp = _team0._map.begin();
+						tmp_team0->_map.erase(tmp);
+						tmp_team1->_map.erase(it);
+						tmp_team0->_map.insert(p2);
+						tmp_team1->_map.insert(p1);
+						tmp = tmp_team0->_map.begin();
 					} else {
 						tmp++;
 					}
-					delta = _team0.calc_rate() - _team1.calc_rate();
+					delta = tmp_team0->calc_rate() - tmp_team1->calc_rate();
 				} 
 				cout << endl << "total tries (permutations) = " << tries << endl;
 				if(tries < 100) 
