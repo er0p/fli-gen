@@ -34,7 +34,7 @@ do
 	full_name=$(echo $tmp | awk -F ',' '{print $1}')
 	name=$(echo $full_name | awk '{print $1}')
 
-	team=$(echo $tmp | awk -F ',' '{print $(NF-4)}')
+	team=$(echo $tmp | awk -F ',' '{print $(NF-2)}')
 
 	if [[ "${team}" == *"Лазурные"* || "${team}" == *"Жёлтые"* || "${team}" == *"Красные"* ]] ; then
 		raw_role=$(echo $tmp | sed -r -e 's/^.*(Центральный защитник|Вратарь|Полузащитник|Крайний защитник|Защитник|Универсал|Форвард.*$)/\1/' | grep -oP '^.*?[0-9]+' | sed -r -e  "s/\"{0,1},[0-9]$//g")

@@ -244,9 +244,11 @@ class FliGen {
 
 			auto tmp = tmp_team0->_map.begin();
 
+#define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 			delta = (tmp_team0->calc_rate() - tmp_team1->calc_rate());
-			if(0 == ((int)(10.0*delta)) % 2) {
-				//cout << "even case delta: " << delta << endl;
+			cout << "delta = " << delta << endl;
+			if(0 == (ROUND_2_INT(10.0*delta) % 2)) {
+				cout << "even case delta: " << delta << endl;
 				while(tmp != tmp_team0->_map.end()) {
 					if((*tmp)->is_keeper()) {
 						tmp++;
@@ -281,6 +283,8 @@ class FliGen {
 					}
 				}
 			} else {
+
+				//cout << "eve " << abs(10.0*delta) <<  " "  <<((int)(10.0*delta)) << " " <<  ((10.0*delta)) % 2 << endl;
 				while(tries++ < 99 && tmp != tmp_team0->_map.end() && abs(delta) >= 0.2) {
 					if((*tmp)->is_keeper()) {
 						tmp++;
