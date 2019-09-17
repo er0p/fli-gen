@@ -8,9 +8,11 @@
 #include <algorithm>
 #include <cstring>
 #include <cmath>
+#include <chrono>
+#include <ctime>
 
 
-#define VERSION_STR "2.3"
+#define VERSION_STR "2.4"
 
 using namespace std;
 
@@ -89,6 +91,9 @@ class Player {
 		bool is_keeper() {
 			return _roles.find(KEEPER) != _roles.end();;
 		}
+		void pretty_self_print(int i) {
+			cout << i  << ". " <<  _name  <<  endl;
+		}
 		
 };
 
@@ -96,6 +101,16 @@ class Team {
 	public:
 		Team(string name) : _name(name) {
 		}
+
+		void pretty_self_print() {
+			int cnt = 0;
+			cout << _name << " ( " << _rate << " ) "  << endl;
+			for(auto it = _map.begin(); it != _map.end(); ++it) {
+				(*it)->pretty_self_print(++cnt);
+			}
+
+		}
+
 		void self_print() {
 			cout << "team name: " << _name << endl;
 			for(auto it = _map.begin(); it != _map.end(); ++it) {
@@ -152,7 +167,7 @@ struct less_than_key {
 
 class FliGen {
 	public:
-		FliGen() : _team0 ("red"), _team1 ("blue") {
+		FliGen() : _team0 ("Красные"), _team1 ("Лазурные") {
 		};
 		FliGen(string t0_name, string t1_name) : _team0(t0_name), _team1(t1_name) {
 		};
@@ -320,7 +335,22 @@ class FliGen {
 					cout << "team ratings is equal, don't need any additional stuff" << endl;
 			}
 		}
-		
+
+		void prettyPrintResult() {
+
+			std::chrono::time_point<std::chrono::system_clock> time_now = std::chrono::system_clock::now();
+			std::time_t time_now_t = std::chrono::system_clock::to_time_t(time_now);
+			std::tm now_tm = *std::localtime(&time_now_t);
+			char buf[512];
+			std::strftime(buf, 512, "%d.%m.%Y", &now_tm);
+
+			cout << "Составы ФЛИ " << buf <<  endl;
+			_team0.pretty_self_print();
+			cout << endl;
+			_team1.pretty_self_print();
+			cout << endl;
+		}
+
 		void printResult() {
 			cout << endl;
 			_team0.self_print();
@@ -380,4 +410,6 @@ int main(int argc, char *argv[]) {
 	fligen.printResult();
 
 	print_version(argv[0]);
+
+	fligen.prettyPrintResult();
 }
