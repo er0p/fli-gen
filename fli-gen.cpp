@@ -83,6 +83,7 @@ class Player {
 		int _id;
 		double _rate;
 		string _name;
+		string _first_name;
 		set<int> _roles;
 		void self_print() {
 			//cout << "id: " << _id << " rate: " << _rate << " name: " << _name << endl;
@@ -92,7 +93,7 @@ class Player {
 			return _roles.find(KEEPER) != _roles.end();;
 		}
 		void pretty_self_print(int i) {
-			cout << i  << ". " <<  _name  <<  endl;
+			cout << i  << ". " <<  _name << " " << _first_name << " " << " (" << _rate << ")"  <<  endl;
 		}
 		
 };
@@ -184,23 +185,24 @@ class FliGen {
 			char buf[1024];
 			double rate = 0;
 			double sum = 0;
-			string role, name;
+			string role, name, fname;
 			bool keeper_fl = false;
 			size_t keeper_count = 0;
 			size_t total_count = 0;
-			while(in >> key >> rate >> role >> name) {
+			while(in >> key >> rate >> role >> name >> fname) {
 				Player *pl = new Player();
-				cout << key << " " << rate << " " << role << " " << name << endl;
+				cout << key << " " << rate << " " << role << " " << name << " " << fname << endl;
 				pl->_id = key;
 				//name.erase(remove(name.begin(), name.end(), ' '), name.end());
 				pl->_name = name;
+				pl->_first_name = fname;
 				pl->_rate = rate;
 				memset(buf, 0,1024);
 				strncpy(buf, role.c_str(), role.length());
 				char *pch = strtok(buf,",");
 				while (pch != NULL) {
 					enum Role r = parse_role(std::string(pch));
-					if(r == KEEPER) {
+					if(r == KEEPER && keeper_count < 2) {
 						keeper_fl = true;
 						pl->_roles.insert(KEEPER);
 						if(0 == _team0._map.size()) {

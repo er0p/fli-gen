@@ -33,6 +33,7 @@ do
 	fi
 	full_name=$(echo $tmp | awk -F ',' '{print $1}')
 	name=$(echo $full_name | awk '{print $1}')
+	fname=$(echo $full_name | awk '{print $2}')
 
 	team=$(echo $tmp | awk -F ',' '{print $(NF-2)}')
 
@@ -49,7 +50,7 @@ do
 #		echo ${rate}
 		#echo $rate | tee -a numbers.in
 		#echo "${line} name:\"${name}\" role:\"${role}\" rate:\"${rate}\" team:\"${team}\""
-		echo "${line} ${rate} ${role} ${name}" | tee -a input.txt
+		echo "${line} ${rate} ${role} ${name} ${fname}" | tee -a input.txt
 		((cnt++))
 	fi
 
