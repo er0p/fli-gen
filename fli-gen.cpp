@@ -12,7 +12,7 @@
 #include <ctime>
 
 
-#define VERSION_STR "2.4"
+#define VERSION_STR "2.5"
 
 using namespace std;
 
