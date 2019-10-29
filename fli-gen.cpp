@@ -12,7 +12,7 @@
 #include <ctime>
 
 
-#define VERSION_STR "2.5"
+#define VERSION_STR "2.6"
 
 using namespace std;
 
@@ -142,6 +142,13 @@ class Team {
 			_rate = 0.0;
 			memset(_role_stat, 0, sizeof _role_stat);
 			for(auto it = _map.begin(); it != _map.end(); ++it) {
+#if 0
+				bool is_in = (*it)->roles.find(element) != (*it)->roles.end();
+				if(is_in) {
+					cout << "skip keeper" << endl;
+					continue;
+				}
+#endif
 				_rate += (*it)->_rate;
 				for(auto jt = (*it)->_roles.begin(); jt != (*it)->_roles.end(); ++jt) {
 					_role_stat[*jt]++;
@@ -204,6 +211,7 @@ class FliGen {
 					enum Role r = parse_role(std::string(pch));
 					if(r == KEEPER && keeper_count < 2) {
 						keeper_fl = true;
+						pl->_rate = 7.0;
 						pl->_roles.insert(KEEPER);
 						if(0 == _team0._map.size()) {
 							_team0.insert(pl);
