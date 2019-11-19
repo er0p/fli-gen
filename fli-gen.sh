@@ -2,6 +2,19 @@
 
 #set -x
 
+
+./curl.sh
+
+./fli-gen
+
+
+exit 0
+
+############
+## LEGACY ##
+############
+
+
 csv_file=$1
 
 possible_roles="(Центральный защитник|Вратарь|Полузащитник|Крайний защитник|Защитник|Универсал|Форвард)"
@@ -57,6 +70,8 @@ do
 done < "$csv_file"
 
 echo "total: ${cnt} footballers"
+
+exit 13
 
 
 ./fli-gen
