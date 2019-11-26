@@ -1,24 +1,25 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/sevlyar/go-daemon"
+	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"reflect"
-	"time"
 	"strconv"
 	"strings"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"encoding/json"
-//	"github.com/tidwall/gjson"
+	"time"
+	//	"github.com/tidwall/gjson"
 )
 
 var g_debug bool
+
 const guest_log_filename = "guest.log"
 
 func main() {
@@ -102,7 +103,7 @@ func FliGenBot() {
 	//Получаем обновления от бота
 	updates, err := bot.GetUpdatesChan(u)
 	time.Sleep(time.Millisecond * 500)
-//	updates.Clear()
+	//	updates.Clear()
 
 	for update := range updates {
 		if update.Message == nil {
@@ -135,11 +136,15 @@ func FliGenBot() {
 				log.Println(reply_str)
 			}
 			switch cmd {
-			case "/generate":
+			case "/gen":
 				log.Println(cmd, arg)
-				b.Reset()
-				b.WriteString(update.Message.Document.FileID)
-				reply_str = b.String()
+				out, err := RunFliGen()
+				if err != nil {
+					log.Fatal(err)
+					continue
+				}
+				log.Printf("output is %s\n", out)
+				reply_str = string(out)
 			case "/whoami":
 				b.Reset()
 				b.WriteString("You are: ")
@@ -163,8 +168,8 @@ func FliGenBot() {
 			resp, err := http.Get(request)
 			if err != nil {
 				// handle error
-				log.Println("error happened");
-				log.Println( err.Error() );
+				log.Println("error happened")
+				log.Println(err.Error())
 				continue
 			}
 
@@ -179,8 +184,8 @@ func FliGenBot() {
 			var json_resp_str string = b.String()
 			log.Printf("JSON RESPONSE: %s", json_resp_str)
 			var info map[string]interface{}
-			err_parse := json.Unmarshal([]byte(json_resp_str),&info)
-			if err_parse != nil || info["ok"] != true  {
+			err_parse := json.Unmarshal([]byte(json_resp_str), &info)
+			if err_parse != nil || info["ok"] != true {
 				log.Println(err_parse)
 				log.Printf("ok: %v", info["ok"])
 				continue
@@ -190,7 +195,7 @@ func FliGenBot() {
 			b.Reset()
 			b.WriteString(tlg_api_file_url)
 			b.WriteString("/")
-			b.WriteString(file_name.(string));
+			b.WriteString(file_name.(string))
 			file_url := b.String()
 			log.Println(file_url)
 			ss := strings.Split(file_name.(string), "/")
@@ -200,8 +205,7 @@ func FliGenBot() {
 				log.Println(err)
 				continue
 			}
-			fli_gen_sh := "./fli-gen.sh"
-			out, err := exec.Command(fli_gen_sh, file_name_loc).Output()
+			out, err := RunFliGen(file_name_loc)
 			if err != nil {
 				log.Fatal(err)
 				continue
@@ -211,17 +215,28 @@ func FliGenBot() {
 
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply_str)
 			bot.Send(msg)
-	
 
 		}
-		whois_str := WhoIsIt (update, f)
-		snitch_msg := tgbotapi.NewMessage(47241589, "Hey, Father! Someone tried to play with me :)\n" + whois_str)
+		whois_str := WhoIsIt(update, f)
+		snitch_msg := tgbotapi.NewMessage(47241589, "Hey, Father! Someone tried to play with me :)\n"+whois_str)
 		bot.Send(snitch_msg)
 	}
 }
+func RunFliGen(file_path ...string) ([]byte, error) {
+	const fli_gen_sh = "./fli-gen.sh"
+	if l := len(file_path); l > 1 {
+		args := make([]string, l)
+		for i, elem := range file_path {
+			args[i] = elem
+		}
+		return exec.Command(fli_gen_sh, args...).Output()
+	} else {
+		log.Println(fli_gen_sh)
+		return exec.Command(fli_gen_sh).Output()
+	}
+}
 
-
-func WhoIsIt (msg tgbotapi.Update, f *os.File) string {
+func WhoIsIt(msg tgbotapi.Update, f *os.File) string {
 	id := strconv.Itoa(msg.Message.From.ID)
 	ret := msg.Message.From.FirstName + " " + msg.Message.From.LastName + " @" + msg.Message.From.UserName + "\nUser ID: " + id
 	if _, err := f.WriteString(ret); err != nil {
@@ -230,6 +245,7 @@ func WhoIsIt (msg tgbotapi.Update, f *os.File) string {
 
 	return ret
 }
+
 // DownloadFile will download a url to a local file. It's efficient because it will
 // write as it downloads and not load the whole file into memory.
 func DownloadFile(filepath string, url string) error {
