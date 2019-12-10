@@ -3,10 +3,10 @@
 #set -x
 
 
+rm input.txt
 ./curl.sh
 
-./fli-gen
-
+./fli-gen $@
 
 exit 0
 

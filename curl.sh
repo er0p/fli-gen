@@ -1,5 +1,5 @@
 #/bin/sh
-
+set -x
 . curl.env 
 
 players=$(curl -s -X GET "https://sheets.googleapis.com/v4/spreadsheets/${sheetID}/values/'Игроки'!A:A?key=${key}&majorDimension=COLUMNS")

@@ -138,12 +138,12 @@ func FliGenBot() {
 			switch cmd {
 			case "/gen":
 				log.Println(cmd, arg)
-				out, err := RunFliGen()
+				out, err := RunFliGen("./input.txt", arg)
 				if err != nil {
 					log.Fatal(err)
 					continue
 				}
-				log.Printf("output is %s\n", out)
+				log.Printf("output is:\n%s\n", out)
 				reply_str = string(out)
 			case "/whoami":
 				b.Reset()
@@ -208,6 +208,7 @@ func FliGenBot() {
 			out, err := RunFliGen(file_name_loc)
 			if err != nil {
 				log.Fatal(err)
+				log.Println("error")
 				continue
 			}
 			log.Printf("output is %s\n", out)
@@ -229,6 +230,7 @@ func RunFliGen(file_path ...string) ([]byte, error) {
 		for i, elem := range file_path {
 			args[i] = elem
 		}
+		fmt.Println(fli_gen_sh, args)
 		return exec.Command(fli_gen_sh, args...).Output()
 	} else {
 		log.Println(fli_gen_sh)

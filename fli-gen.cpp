@@ -12,7 +12,7 @@
 #include <ctime>
 
 
-#define VERSION_STR "2.6"
+#define VERSION_STR "2.7"
 
 using namespace std;
 
@@ -90,7 +90,7 @@ class Player {
 			cout << "id: " << setw(3) << _id << " rate: " << setw(5) << _rate << " name: " << std::left << setw(15) << _name << std::right <<  setw(15) << " roles: " << roles_to_str(_roles) <<  endl;
 		}
 		bool is_keeper() {
-			return _roles.find(KEEPER) != _roles.end();;
+			return _roles.find(KEEPER) != _roles.end();
 		}
 		void pretty_self_print(int i) {
 			cout << i  << ". " <<  _name << " " << _first_name << " " << " (" << _rate << ")"  <<  endl;
@@ -186,7 +186,7 @@ class FliGen {
 			}
 		}
 
-		void parseFile(string &path) {
+		void parseFile(string &path, bool keep_excl = true) {
 			ifstream in(path);
 			int key = 0;
 			char buf[1024];
@@ -211,7 +211,10 @@ class FliGen {
 					enum Role r = parse_role(std::string(pch));
 					if(r == KEEPER && keeper_count < 2) {
 						keeper_fl = true;
-						pl->_rate = 7.0;
+						if(keep_excl)
+							pl->_rate = 0.0;
+						else
+							pl->_rate = rate;
 						pl->_roles.insert(KEEPER);
 						if(0 == _team0._map.size()) {
 							_team0.insert(pl);
@@ -239,8 +242,8 @@ class FliGen {
 		void splitOfferV1() {
 			size_t cnt = 0;
 			std::sort(_all_players.begin(), _all_players.end(), less_than_key());
-			bool fl, who_start = true;
-			//bool fl, who_start = (*_team0._map.begin())->_rate < (*_team1._map.begin())->_rate;
+			//bool fl, who_start = true;
+			bool fl, who_start = (*_team0._map.begin())->_rate < (*_team1._map.begin())->_rate;
 			for(auto it = _all_players.begin(); it != _all_players.end(); ++it, cnt++) {
 				fl = who_start ? cnt % 2 : !(cnt %2);
 				if(fl) {
@@ -282,7 +285,7 @@ class FliGen {
 					//cout << "team0 palyer name: "  << (*tmp)->_name << '\n';
 					auto it = std::find_if(tmp_team1->_map.begin(), tmp_team1->_map.end(), [&tmp,&delta] (auto &arg) {
 							if(arg->is_keeper()) {
-							return false;
+								return false;
 							}
 							//cout << "team1 palyer name: "  << arg->_name << '\n';
 							double cur_del = ((*tmp)->_rate - arg->_rate) - (delta/2.0);
@@ -318,7 +321,7 @@ class FliGen {
 					cout << "team0 palyer name: "  << (*tmp)->_name << '\n';
 					auto it = std::find_if(tmp_team1->_map.begin(), tmp_team1->_map.end(), [&tmp,&delta] (auto &arg) {
 							if(arg->is_keeper()) {
-							return false;
+								return false;
 							}
 							cout << "team1 palyer name: "  << arg->_name << '\n';
 							double eps = ((*tmp)->_rate - arg->_rate) - delta;
@@ -346,15 +349,16 @@ class FliGen {
 			}
 		}
 
-		void prettyPrintResult() {
+		void prettyPrintResult(bool keep_excl) {
 
 			std::chrono::time_point<std::chrono::system_clock> time_now = std::chrono::system_clock::now();
 			std::time_t time_now_t = std::chrono::system_clock::to_time_t(time_now);
 			std::tm now_tm = *std::localtime(&time_now_t);
 			char buf[512];
 			std::strftime(buf, 512, "%d.%m.%Y", &now_tm);
-
-			cout << "Составы ФЛИ " << buf <<  endl;
+//			std::string how = keep_excl ? "Без учёта" : "С учётом";
+			cout << "Составы ФЛИ " << buf << endl;
+			//cout << (keep_excl ? "on" : "off") <<  " keepers" << endl;
 			_team0.pretty_self_print();
 			cout << endl;
 			_team1.pretty_self_print();
@@ -415,11 +419,12 @@ int main(int argc, char *argv[]) {
 	} else {
 		input_file = "input.txt";
 	}
-	fligen.parseFile(input_file);
+	bool keep_excl = argc > 2;
+	fligen.parseFile(input_file, keep_excl);
 	fligen.splitOfferV2();
 	fligen.printResult();
 
 	print_version(argv[0]);
 
-	fligen.prettyPrintResult();
+	fligen.prettyPrintResult(keep_excl);
 }
