@@ -10,9 +10,15 @@
 #include <cmath>
 #include <chrono>
 #include <ctime>
+#include <random>
+#include <vector>
+#include <iostream>
+#include <algorithm>
+#include <functional>
+#include <iterator>
 
 
-#define VERSION_STR "2.7"
+#define VERSION_STR "2.8"
 
 using namespace std;
 
@@ -186,7 +192,7 @@ class FliGen {
 			}
 		}
 
-		void parseFile(string &path, bool keep_excl = true) {
+		void parseFile(string &path, bool keep_excl) {
 			ifstream in(path);
 			int key = 0;
 			char buf[1024];
@@ -198,9 +204,8 @@ class FliGen {
 			size_t total_count = 0;
 			while(in >> key >> rate >> role >> name >> fname) {
 				Player *pl = new Player();
-				cout << key << " " << rate << " " << role << " " << name << " " << fname << endl;
+				//cout << key << " " << rate << " " << role << " " << name << " " << fname << endl;
 				pl->_id = key;
-				//name.erase(remove(name.begin(), name.end(), ' '), name.end());
 				pl->_name = name;
 				pl->_first_name = fname;
 				pl->_rate = rate;
@@ -236,7 +241,7 @@ class FliGen {
 				total_count++;
 			}
 			_avg_rate = sum / total_count;
-			cout << endl << "sum: " << sum << " sum/2: " << sum/2.0 <<  " avg rate: " << _avg_rate <<  endl;
+			//cout << endl << "sum: " << sum << " sum/2: " << sum/2.0 <<  " avg rate: " << _avg_rate <<  endl;
 		}
 
 		void splitOfferV1() {
@@ -274,9 +279,9 @@ class FliGen {
 
 #define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 			delta = (tmp_team0->calc_rate() - tmp_team1->calc_rate());
-			cout << "delta = " << delta << endl;
+//			cout << "delta = " << delta << endl;
 			if(0 == (ROUND_2_INT(10.0*delta) % 2)) {
-				cout << "even case delta: " << delta << endl;
+				//cout << "even case delta: " << delta << endl;
 				while(tmp != tmp_team0->_map.end()) {
 					if((*tmp)->is_keeper()) {
 						tmp++;
@@ -318,15 +323,15 @@ class FliGen {
 						tmp++;
 						continue;
 					}
-					cout << "team0 palyer name: "  << (*tmp)->_name << '\n';
+//					cout << "team0 palyer name: "  << (*tmp)->_name << '\n';
 					auto it = std::find_if(tmp_team1->_map.begin(), tmp_team1->_map.end(), [&tmp,&delta] (auto &arg) {
 							if(arg->is_keeper()) {
 								return false;
 							}
-							cout << "team1 palyer name: "  << arg->_name << '\n';
+//							cout << "team1 palyer name: "  << arg->_name << '\n';
 							double eps = ((*tmp)->_rate - arg->_rate) - delta;
 							bool ret = (eps >= 0.0) && (eps < 0.2);
-							cout << "eps: "  << eps << " ret: " << ret  <<  '\n';
+//							cout << "eps: "  << eps << " ret: " << ret  <<  '\n';
 							return ret; 
 							}
 							);
@@ -343,9 +348,38 @@ class FliGen {
 					}
 					delta = tmp_team0->calc_rate() - tmp_team1->calc_rate();
 				} 
-				cout << endl << "total tries (permutations) = " << tries << endl;
-				if(tries < 100) 
-					cout << "team ratings is equal, don't need any additional stuff" << endl;
+//				cout << endl << "total tries (permutations) = " << tries << endl;
+//				if(tries < 100) 
+//					cout << "team ratings is equal, don't need any additional stuff" << endl;
+			}
+		}
+		void shake() {
+			auto *t0 = &(_team0._map);
+			auto *t1 = &(_team1._map);
+			auto it0 = t0->begin();
+			double delta = (_team0.calc_rate() - _team1.calc_rate());
+			//auto it1 = t1->begin;
+			random_device rd;
+			mt19937 gen(rd());
+			uniform_int_distribution<> dist(0, t0->size() - 1);
+			vector<int> v(8);
+			generate(v.begin(), v.end(), bind(dist, gen));
+			for (auto i: v) {
+				std::advance(it0, i);
+				//cout << i << " " << (*it0)->_name << '\n';
+				for (auto it1 = t1->begin(); it1 != t1->end(); ++it1) {
+					double cur_del = ((*it0)->_rate - (*it1)->_rate) - (delta/2.0);
+					bool equal = (cur_del > -0.05) && (cur_del < 0.05);
+					if(equal) {
+						Player *p1 = *it0, *p2 = *it1;
+						t0->erase(it0);
+						t1->erase(it1);
+						t0->insert(p2);
+						t1->insert(p1);
+						break;
+					}
+				}
+				it0 = t0->begin();
 			}
 		}
 
@@ -356,9 +390,12 @@ class FliGen {
 			std::tm now_tm = *std::localtime(&time_now_t);
 			char buf[512];
 			std::strftime(buf, 512, "%d.%m.%Y", &now_tm);
-//			std::string how = keep_excl ? "Без учёта" : "С учётом";
 			cout << "Составы ФЛИ " << buf << endl;
-			//cout << (keep_excl ? "on" : "off") <<  " keepers" << endl;
+			if(keep_excl)
+				cout << "Без учёта";
+			else 
+				cout <<  "С учётом";
+			cout << " вратарей" << endl << endl;
 			_team0.pretty_self_print();
 			cout << endl;
 			_team1.pretty_self_print();
@@ -422,7 +459,8 @@ int main(int argc, char *argv[]) {
 	bool keep_excl = argc > 2;
 	fligen.parseFile(input_file, keep_excl);
 	fligen.splitOfferV2();
-	fligen.printResult();
+	fligen.shake();
+	//fligen.printResult();
 
 	print_version(argv[0]);
 
