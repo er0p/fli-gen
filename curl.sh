@@ -29,5 +29,6 @@ do
 	rate=$(echo $rates   | jq  ".values[0]" | jq  ".[$i]" | sed "s/^\"//g" | sed "s/\"$//" | sed "s/,/./")
 	role=$(echo $roles   | jq  ".values[0]" | jq  ".[$i]" | sed "s/^\"//g" | sed "s/\"$//" | tr -d "[:space:]" | sed 's/.*/\L&/g')
 	player=$(echo $players | jq  ".values[0]" | jq  ".[$i]" | sed "s/^\"//g" | sed "s/\"$//" | awk '{print $1" "$2}')
-	echo $id $rate $role $player | tee -a input.txt
+	#echo $id $rate $role $player | tee -a input.txt
+	echo $id $rate $role $player >>  input.txt
 done

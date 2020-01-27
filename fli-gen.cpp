@@ -380,6 +380,16 @@ class FliGen {
 					}
 				}
 				it0 = t0->begin();
+				//delta = t0->calc_rate() - t1->calc_rate(); 
+				//
+				auto func  = [](std::set<class Player *> *set_ptr ) {
+					double _ret = 0.0;
+					for(auto it = set_ptr->begin(); it != set_ptr->end(); ++it) {
+						_ret += (*it)->_rate;
+					}
+					return _ret;
+				};
+				delta = func(t0) - func(t1);
 			}
 		}
 
