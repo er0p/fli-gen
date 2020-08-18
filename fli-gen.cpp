@@ -18,7 +18,7 @@
 #include <iterator>
 
 
-#define VERSION_STR "2.8"
+#define VERSION_STR "2.8.2"
 
 using namespace std;
 
@@ -89,44 +89,44 @@ class Player {
 		int _id;
 		double _rate;
 		string _name;
-		string _first_name;
-		set<int> _roles;
-		void self_print() {
-			//cout << "id: " << _id << " rate: " << _rate << " name: " << _name << endl;
-			cout << "id: " << setw(3) << _id << " rate: " << setw(5) << _rate << " name: " << std::left << setw(15) << _name << std::right <<  setw(15) << " roles: " << roles_to_str(_roles) <<  endl;
-		}
-		bool is_keeper() {
-			return _roles.find(KEEPER) != _roles.end();
-		}
-		void pretty_self_print(int i) {
-			cout << i  << ". " <<  _name << " " << _first_name << " " << " (" << _rate << ")"  <<  endl;
-		}
-		
-};
+			string _first_name;
+			set<int> _roles;
+			void self_print() {
+				//cout << "id: " << _id << " rate: " << _rate << " name: " << _name << endl;
+				//cout << "id: " << setw(3) << _id << " rate: " << setw(5) << _rate << " name: " << std::left << setw(15) << _name << std::right <<  setw(15) << " roles: " << roles_to_str(_roles) <<  endl;
+			}
+			bool is_keeper() {
+				return _roles.find(KEEPER) != _roles.end();
+			}
+			void pretty_self_print(int i) {
+				cout << i  << ". " <<  _name << " " << _first_name << " " << " (" << _rate << ")"  <<  endl;
+			}
+			
+	};
 
-class Team {
-	public:
-		Team(string name) : _name(name) {
-		}
-
-		void pretty_self_print() {
-			int cnt = 0;
-			cout << _name << " ( " << _rate << " ) "  << endl;
-			for(auto it = _map.begin(); it != _map.end(); ++it) {
-				(*it)->pretty_self_print(++cnt);
+	class Team {
+		public:
+			Team(string name) : _name(name) {
 			}
 
-		}
+			void pretty_self_print() {
+				int cnt = 0;
+				cout << _name << " ( " << _rate << " ) "  << endl;
+				for(auto it = _map.begin(); it != _map.end(); ++it) {
+					(*it)->pretty_self_print(++cnt);
+				}
 
-		void self_print() {
-			cout << "team name: " << _name << endl;
-			for(auto it = _map.begin(); it != _map.end(); ++it) {
-				(*it)->self_print();
 			}
 
-			cout << "team rate: " << _rate << endl;
-			cout << "possible role as:" <<
-				"\n\tKeeper     : " << _role_stat[KEEPER] <<
+			void self_print() {
+				cout << "team name: " << _name << endl;
+				for(auto it = _map.begin(); it != _map.end(); ++it) {
+					(*it)->self_print();
+				}
+
+				cout << "team rate: " << _rate << endl;
+				cout << "possible role as:" <<
+					"\n\tKeeper     : " << _role_stat[KEEPER] <<
 				"\n\tDefender   : " << _role_stat[DEFENDER] <<
 				"\n\tMidfielder : " << _role_stat[MIDFIELDER] <<
 				"\n\tForward    : " << _role_stat[FORWARD] <<
@@ -219,7 +219,7 @@ class FliGen {
 						if(keep_excl)
 							pl->_rate = 0.0;
 						else
-							pl->_rate = rate;
+							pl->_rate = rate / 2;
 						pl->_roles.insert(KEEPER);
 						if(0 == _team0._map.size()) {
 							_team0.insert(pl);
@@ -366,8 +366,12 @@ class FliGen {
 			generate(v.begin(), v.end(), bind(dist, gen));
 			for (auto i: v) {
 				std::advance(it0, i);
+				if((*it0)->is_keeper())
+					continue;
 				//cout << i << " " << (*it0)->_name << '\n';
 				for (auto it1 = t1->begin(); it1 != t1->end(); ++it1) {
+					if((*it1)->is_keeper())
+						continue;
 					double cur_del = ((*it0)->_rate - (*it1)->_rate) - (delta/2.0);
 					bool equal = (cur_del > -0.05) && (cur_del < 0.05);
 					if(equal) {

@@ -1,0 +1,18 @@
+[Unit]
+Description=FliGenBot launcher
+After=network.target
+Requires=systemd-networkd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/er0p/wrk/src/fli-gen/run_bot.sh
+#PIDFile=/home/er0p/wrk/src/fli-gen/pid
+User=er0p
+Group=users
+#Restart=always
+ExecStop=/usr/bin/pkill fli-gen-bot
+
+[Install]
+#WantedBy=vmware.target
+WantedBy=runlevel3.target

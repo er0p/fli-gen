@@ -26,11 +26,11 @@ func main() {
 
 	var d_mode bool
 	cntxt := &daemon.Context{
-		PidFileName: "pid",
+		PidFileName: "/home/er0p/wrk/src/fli-gen/pid",
 		PidFilePerm: 0644,
-		LogFileName: "log",
+		LogFileName: "/home/er0p/wrk/src/fli-gen/pid",
 		LogFilePerm: 0640,
-		WorkDir:     "./",
+		WorkDir:     "",
 		Umask:       027,
 		//Args:        []string{"[go-daemon sample]"},
 	}
