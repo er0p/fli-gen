@@ -17,8 +17,9 @@
 #include <functional>
 #include <iterator>
 
+#define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 
-#define VERSION_STR "2.8.2"
+#define VERSION_STR "2.8.3"
 
 using namespace std;
 
@@ -86,23 +87,27 @@ string roles_to_str(set<int> &roles) {
 
 class Player {
 	public:
+		Player() : _as(0), _ds(0), _ps(0), _pc(0), _name(""), _id(-1), _rate(0.0), _first_name("") {}
 		int _id;
 		double _rate;
 		string _name;
-			string _first_name;
-			set<int> _roles;
-			void self_print() {
-				//cout << "id: " << _id << " rate: " << _rate << " name: " << _name << endl;
-				//cout << "id: " << setw(3) << _id << " rate: " << setw(5) << _rate << " name: " << std::left << setw(15) << _name << std::right <<  setw(15) << " roles: " << roles_to_str(_roles) <<  endl;
-			}
-			bool is_keeper() {
-				return _roles.find(KEEPER) != _roles.end();
-			}
-			void pretty_self_print(int i) {
-				cout << i  << ". " <<  _name << " " << _first_name << " " << " (" << _rate << ")"  <<  endl;
-			}
-			
-	};
+		string _first_name;
+		int _as; // attacking skill
+		int _ds; // defending skill
+		int _ps; // passing skill
+		int _pc; // physical condition 
+		set<int> _roles;
+		void self_print() {
+			//cout << "id: " << _id << " rate: " << _rate << " name: " << _name << endl;
+			//cout << "id: " << setw(3) << _id << " rate: " << setw(5) << _rate << " name: " << std::left << setw(15) << _name << std::right <<  setw(15) << " roles: " << roles_to_str(_roles) <<  endl;
+		}
+		bool is_keeper() {
+			return _roles.find(KEEPER) != _roles.end();
+		}
+		void pretty_self_print(int i) {
+			cout << i  << ". " <<  _name << " " << _first_name << " " << " (" << _rate << ")"  <<  endl;
+		}
+};
 
 	class Team {
 		public:
@@ -111,7 +116,7 @@ class Player {
 
 			void pretty_self_print() {
 				int cnt = 0;
-				cout << _name << " ( " << _rate << " ) "  << endl;
+				cout << _name << " ( Рейтинг: " << _rate << ", ОФП: " << this->_sum_phys_cond << " ) "  << endl;
 				for(auto it = _map.begin(); it != _map.end(); ++it) {
 					(*it)->pretty_self_print(++cnt);
 				}
@@ -162,10 +167,18 @@ class Player {
 			}
 			return _rate;
 		}
+		int calc_phys_cond() {
+			_sum_phys_cond = 0;
+			for(auto it = _map.begin(); it != _map.end(); ++it) {
+				_sum_phys_cond += (*it)->_pc;
+			}
+			return _sum_phys_cond;
+		}
 
 		//map<int, class Player *> _map;
 		set<class Player *> _map;
 		double _rate;
+		int _sum_phys_cond;
 	private:
 		string _name;
 		size_t _role_stat[NR] = {};
@@ -177,6 +190,8 @@ struct less_than_key {
     }
 };
 
+
+#include <cctype>
 
 
 class FliGen {
@@ -192,58 +207,134 @@ class FliGen {
 			}
 		}
 
-		void parseFile(string &path, bool keep_excl) {
-			ifstream in(path);
-			int key = 0;
-			char buf[1024];
-			double rate = 0;
-			double sum = 0;
-			string role, name, fname;
-			bool keeper_fl = false;
-			size_t keeper_count = 0;
-			size_t total_count = 0;
-			while(in >> key >> rate >> role >> name >> fname) {
-				Player *pl = new Player();
-				//cout << key << " " << rate << " " << role << " " << name << " " << fname << endl;
-				pl->_id = key;
-				pl->_name = name;
-				pl->_first_name = fname;
-				pl->_rate = rate;
-				memset(buf, 0,1024);
-				strncpy(buf, role.c_str(), role.length());
-				char *pch = strtok(buf,",");
-				while (pch != NULL) {
-					enum Role r = parse_role(std::string(pch));
-					if(r == KEEPER && keeper_count < 2) {
-						keeper_fl = true;
-						if(keep_excl)
-							pl->_rate = 0.0;
-						else
-							pl->_rate = rate / 2;
-						pl->_roles.insert(KEEPER);
-						if(0 == _team0._map.size()) {
-							_team0.insert(pl);
-						} else {
-							_team1.insert(pl);
-						}
-						keeper_count++;
-					}	
-					pl->_roles.insert(r);
-					//cout << pch  << endl;
-					pch = strtok (NULL, ",");
-				}
-				if(!keeper_fl) {
-					_all_players.push_back(pl);	
-					//map.insert(make_pair(key,pl));
-				} 
-				keeper_fl = false;	
-				sum += rate;
-				total_count++;
-			}
-			_avg_rate = sum / total_count;
-			//cout << endl << "sum: " << sum << " sum/2: " << sum/2.0 <<  " avg rate: " << _avg_rate <<  endl;
-		}
+		int parseFile(string &path, bool keep_excl) {
+			//int count_words(const char* str) {
+			auto count_words = [](const char* str) {
+				if (str == NULL)
+					return -1;  // let the requirements define this...
+				bool inSpaces = true;
+				int numWords = 0;
 
+				while (*str != '\0') {
+					if (std::isspace(*str)) {
+						inSpaces = true;
+					}
+					else if (inSpaces) {
+						numWords++;
+						inSpaces = false;
+					}
+					++str;
+				}
+				return numWords;
+			};
+
+			ifstream in(path);
+//			in.exceptions ( std::ifstream::failbit | std::ifstream::badbit );
+			try {
+				int key = 0;
+				char buf[1024];
+				double rate = 0;
+				double sum = 0;
+				string role, name, fname;
+				string as , ds , ps , pc ;
+				bool keeper_fl = false;
+				size_t keeper_count = 0;
+				size_t total_count = 0;
+#if 1
+				std::string line;
+				while (std::getline(in, line)) {
+					int wrd_cnt = count_words(line.c_str());
+					//cout << "count words = " << wrd_cnt <<  endl;
+					std::istringstream iss(line);
+					if(0 >= wrd_cnt) {
+						//cout << "empty string" << endl;
+						continue;
+					} else if(5 == wrd_cnt) {
+						if(!(iss >> key >> rate >> role >> name >> fname)) { break; } ;
+					} else if( 9 == wrd_cnt) {
+						if(!(iss >> key >> rate >> role >> name >> fname >> as >> ds >> ps >> pc)) { break; } ;
+					} else {
+						cout << "incorrect input format" << endl; 
+					}
+#endif
+					//while(in >> key >> rate >> role >> name >> fname >> as >> ds >> ps >> pc) 
+					Player *pl = new Player();
+					//cout << key << " " << rate << " " << role << " " << name << " " << fname << endl;
+					pl->_id = key;
+					pl->_name = name;
+					pl->_first_name = fname;
+					pl->_rate = rate;
+
+					auto _stoi = [](std::string &str, int *p_value) {
+						// wrapping std::stoi because it may throw an exception
+						try {
+							*p_value = std::stoi(str);
+							return 0;
+						} catch (const std::invalid_argument& ia) {
+							//std::cerr << "Invalid argument: " << ia.what() << std::endl;
+							return -1;
+						} catch (const std::out_of_range& oor) {
+							//std::cerr << "Out of Range error: " << oor.what() << std::endl;
+							return -2;
+						} catch (const std::exception& e) {
+							//std::cerr << "Undefined error: " << e.what() << std::endl;
+							return -3;
+						}
+					};
+					_stoi(as, &pl->_as);
+					_stoi(ds, &pl->_ds);
+					_stoi(ps, &pl->_ps);
+					_stoi(pc, &pl->_pc);
+					//cout << "attacking_skill = " << as << " defending_skill = " << ds << " passing_skill = " << ps << " phys_cond = " << pc << endl;
+					//cout << "as = " << pl->_as << " ds = " << pl->_ds << " ps = " << pl->_ps << " pc = " << pl->_pc << endl;
+					memset(buf, 0,1024);
+					strncpy(buf, role.c_str(), role.length());
+					char *pch = strtok(buf,",");
+					while (pch != NULL) {
+						enum Role r = parse_role(std::string(pch));
+						if(r == KEEPER && keeper_count < 2) {
+							keeper_fl = true;
+							if(keep_excl)
+								pl->_rate = 0.0;
+							else
+								pl->_rate = rate / 2;
+							pl->_roles.insert(KEEPER);
+							if(0 == _team0._map.size()) {
+								_team0.insert(pl);
+							} else {
+								_team1.insert(pl);
+							}
+							keeper_count++;
+						}	
+						pl->_roles.insert(r);
+						//cout << pch  << endl;
+						pch = strtok (NULL, ",");
+					}
+					if(!keeper_fl) {
+						_all_players.push_back(pl);	
+						//map.insert(make_pair(key,pl));
+					} 
+					keeper_fl = false;	
+					sum += rate;
+					total_count++;
+				}
+				_avg_rate = sum / total_count;
+				//cout << endl << "sum: " << sum << " sum/2: " << sum/2.0 <<  " avg rate: " << _avg_rate <<  endl;
+			}
+			catch (std::ifstream::failure e) {
+				std::cerr << "Exception opening/reading/closing file\n";
+			}
+			catch(std::invalid_argument &e) {
+				cout << "invalid arg\n";
+			}
+			catch (...) {
+				cout << "exception happened" << endl;
+				return 1;
+			}
+			return 0;
+			//cath()
+		}
+                
 		void splitOfferV1() {
 			size_t cnt = 0;
 			std::sort(_all_players.begin(), _all_players.end(), less_than_key());
@@ -277,7 +368,6 @@ class FliGen {
 
 			auto tmp = tmp_team0->_map.begin();
 
-#define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 			delta = (tmp_team0->calc_rate() - tmp_team1->calc_rate());
 //			cout << "delta = " << delta << endl;
 			if(0 == (ROUND_2_INT(10.0*delta) % 2)) {
@@ -302,11 +392,10 @@ class FliGen {
 							);
 					if(it != tmp_team1->_map.end()) {
 						(*it)->self_print();
-						Player *p1 = *tmp, *p2 = *it;
-						tmp_team0->_map.erase(tmp);
-						tmp_team1->_map.erase(it);
-						tmp_team0->_map.insert(p2);
-						tmp_team1->_map.insert(p1);
+
+						
+						switch_players(tmp_team0, tmp_team1, *tmp, *it);
+						
 						tmp = tmp_team0->_map.begin();
 		                                //cout << "t0: " << tmp_team0.calc_rate() << " t1: " <<  tmp_team1.calc_rate() << endl;
 		                                tmp_team0->calc_rate();tmp_team1->calc_rate();
@@ -353,6 +442,14 @@ class FliGen {
 //					cout << "team ratings is equal, don't need any additional stuff" << endl;
 			}
 		}
+		void switch_players(Team *t0, Team *t1, Player *p0, Player *p1) {
+			//Player *p1 = *tmp, *p2 = *it;
+			//Player *p1 = *tmp, *p2 = *it;
+			t0->_map.erase(p0);
+			t1->_map.erase(p1);
+			t0->_map.insert(p1);
+			t1->_map.insert(p0);
+		}
 		void shake() {
 			auto *t0 = &(_team0._map);
 			auto *t1 = &(_team1._map);
@@ -397,8 +494,51 @@ class FliGen {
 			}
 		}
 
-		void prettyPrintResult(bool keep_excl) {
+		int rebalanceByPhysCond() {
+			int red_pc = _team0.calc_phys_cond();
+			int azure_pc = _team1.calc_phys_cond();
+			//cout << "azure pc = " << azure_pc << endl;
+			//cout << "red pc = " <<  red_pc << endl;
+			int team_delta_pc = azure_pc - red_pc;
+			//cout << "team delta pc = " <<  team_delta_pc << endl;
+			if(std::abs(team_delta_pc) > 1) {
+				double team_delta_rate = (_team0.calc_rate() - _team1.calc_rate());
+				//try to rebalance
+				//decltype (_team0._map) *t0;
+				//decltype (_team1._map) *t1;
+//				auto t0 = &(_team1._map);
+//				auto t1 = &(_team0._map);
+				for (auto it0 = _team0._map.begin(); it0 != _team0._map.end(); ++it0) {
+					for (auto it1 = _team1._map.begin(); it1 != _team1._map.end(); ++it1) {
+						if((*it0)->is_keeper() || (*it1)->is_keeper())
+							continue;
+						double cur_del = ((*it0)->_rate - (*it1)->_rate) - (team_delta_rate/2.0);
+						int player_delta_pc = (*it0)->_pc - (*it1)->_pc;
+						//cout << "cur_del = " << cur_del << endl;
+						int r0 = ROUND_2_INT(10.0*((*it0)->_rate));
+						int r1 = ROUND_2_INT(10.0*((*it1)->_rate));
+						bool equal = r0 == r1;
+						//cout << "equal = " << (equal ? "true" : "false") << " player_delta_pc = " << player_delta_pc << endl;
+						if(equal && player_delta_pc) {
+							if((player_delta_pc < 0 && team_delta_pc > 0) || (player_delta_pc > 0 && team_delta_pc < 0)) {
+								//cout << " swap players: " << (*it1)->_name << " and " << (*it0)->_name << " player delta pc = " << player_delta_pc << endl;
+								switch_players(&_team0, &_team1,  *it0, *it1);
+								//cout << "rebalance pc: "<< _team1.calc_phys_cond() <<  " : " << _team0.calc_phys_cond() << endl;
+								return 2;
+							}
+						}
+					}
+				}
+				return 1;
+			} else {
+				//cout << "teams are equal by physical conditions\n";
+				return 0;
+			}
+		}
 
+		void prettyPrintResult(bool keep_excl) {
+			_team0.calc_phys_cond();
+			_team1.calc_phys_cond();
 			std::chrono::time_point<std::chrono::system_clock> time_now = std::chrono::system_clock::now();
 			std::time_t time_now_t = std::chrono::system_clock::to_time_t(time_now);
 			std::tm now_tm = *std::localtime(&time_now_t);
@@ -410,17 +550,17 @@ class FliGen {
 			else 
 				cout <<  "С учётом";
 			cout << " вратарей" << endl << endl;
-			_team0.pretty_self_print();
-			cout << endl;
 			_team1.pretty_self_print();
+			cout << endl;
+			_team0.pretty_self_print();
 			cout << endl;
 		}
 
 		void printResult() {
 			cout << endl;
-			_team0.self_print();
-			cout << endl;
 			_team1.self_print();
+			cout << endl;
+			_team0.self_print();
 			cout << endl;
 		}
 	private:
@@ -471,10 +611,20 @@ int main(int argc, char *argv[]) {
 		input_file = "input.txt";
 	}
 	bool keep_excl = argc > 2;
-	fligen.parseFile(input_file, keep_excl);
+	if(fligen.parseFile(input_file, keep_excl)) {
+		cout << "error parsing input file\n";
+		exit(13);
+	}
+
 	fligen.splitOfferV2();
 	fligen.shake();
-	//fligen.printResult();
+	
+	int num_tries = 0;
+	while(0 != fligen.rebalanceByPhysCond()) {
+		if( ++num_tries > 100)
+			break;
+	}
+	fligen.printResult();
 
 	print_version(argv[0]);
 

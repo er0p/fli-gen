@@ -28,7 +28,7 @@ func main() {
 	cntxt := &daemon.Context{
 		PidFileName: "/home/er0p/wrk/src/fli-gen/pid",
 		PidFilePerm: 0644,
-		LogFileName: "/home/er0p/wrk/src/fli-gen/pid",
+		LogFileName: "/home/er0p/wrk/src/fli-gen/log",
 		LogFilePerm: 0640,
 		WorkDir:     "",
 		Umask:       027,
