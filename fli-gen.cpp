@@ -13,9 +13,13 @@
 #include <random>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 #include <algorithm>
 #include <functional>
 #include <iterator>
+
+#include <codecvt>
+#include <unicode/unistr.h>
 
 #define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 
@@ -105,7 +109,12 @@ class Player {
 			return _roles.find(KEEPER) != _roles.end();
 		}
 		void pretty_self_print(int i) {
-			cout << i  << ". " <<  _name << " " << _first_name << " " << " (" << _rate << ")"  <<  endl;
+			string player_str = ( to_string(i) + ". " +  _name + " "  +  _first_name);
+			int glyphs = wstring_convert< codecvt_utf8<char32_t>, char32_t >().from_bytes(player_str).size();
+			int str_size = player_str.size();
+			cout << player_str;
+			cout <<  setw(22 - glyphs) << cout.fill(' ');
+			cout <<  " (" << fixed << setprecision(2) <<  _rate << ", " << _pc << ")"  <<  endl;
 		}
 };
 
@@ -548,8 +557,13 @@ class FliGen {
 			if(keep_excl)
 				cout << "Без учёта";
 			else 
-				cout <<  "С учётом";
-			cout << " вратарей" << endl << endl;
+				cout <<  "С учётом ";
+			cout << " вратарей" << endl;
+			if(!keep_excl)
+				cout << " ( Рейтинг вратаря уполовинивается ) " << endl;
+			else
+				cout << " ( Рейтинг вратаря принимается равным нулю ) " << endl;
+			cout <<  endl;
 			_team1.pretty_self_print();
 			cout << endl;
 			_team0.pretty_self_print();
