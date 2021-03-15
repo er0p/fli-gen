@@ -61,6 +61,22 @@ func main() {
 	FliGenBot()
 }
 
+var numericKeyboard = tgbotapi.NewReplyKeyboard(
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton("БУВ:Атака"),
+		tgbotapi.NewKeyboardButton("БУВ:Защита"),
+		tgbotapi.NewKeyboardButton("БУВ:Пас"),
+		tgbotapi.NewKeyboardButton("БУВ:Скорость"),
+		tgbotapi.NewKeyboardButton("БУВ:Возраст"),
+	),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton("СУВ:Атака"),
+		tgbotapi.NewKeyboardButton("СУВ:Защита"),
+		tgbotapi.NewKeyboardButton("СУВ:Пас"),
+		tgbotapi.NewKeyboardButton("СУВ:Скорость"),
+		tgbotapi.NewKeyboardButton("СУВ:Возраст")),
+)
+
 func FliGenBot() {
 
 	var b strings.Builder
@@ -85,6 +101,9 @@ func FliGenBot() {
 
 	fmt.Printf("BOT_DEBUG = %v\n", g_debug)
 	log.Printf("Authorized on account %s", bot.Self.UserName)
+
+	//KeyboardButton = NewKeyboardButtonContact(text string)
+	//kbb_gen := tgbotapi.NewKeyboardButton("Test")
 
 	//Устанавливаем время обновления
 	u := tgbotapi.NewUpdate(0)
@@ -119,41 +138,85 @@ func FliGenBot() {
 			var cmd string = update.Message.Text
 			var cmds []string = strings.Split(cmd, " ")
 			var reply_str string
-			var arg string
+			//var arg string
+			var use_keeper int = -1
 
 			if rune_str[0] == '/' {
 				space_pos := strings.Index(update.Message.Text, " ")
 				if space_pos > 0 {
 					cmd = cmds[0]
 				}
-				if len(cmds) > 1 {
-					arg = cmds[1]
-				}
 				log.Println("CMD:", cmd)
-				log.Println("ARG:", arg)
+				/*
+					if len(cmds) > 1 {
+						arg = cmds[1]
+						log.Println("ARG0:", arg)
+					}
+					if len(cmds) > 2 {
+						arg = cmds[2]
+						log.Println("ARG1:", arg)
+					}
+				*/
+				switch cmd {
+				//case "/gen":
+				//	log.Println(cmd, arg)
+				//	out, err := RunFliGen("./input.txt", cmds[1], cmds[2])
+				//	if err != nil {
+				//		log.Fatal(err)
+				//		continue
+				//	}
+				//	log.Printf("output is:\n%s\n", out)
+				//	reply_str = string(out)
+				case "/start":
+					reply_str = "Привет! Я телеграм-бот компании FLI Inc."
+				case "/whoami":
+					b.Reset()
+					b.WriteString("You are: ")
+					b.WriteString(update.Message.From.FirstName)
+					id_str := strconv.Itoa(update.Message.From.ID)
+					b.WriteString(id_str)
+					reply_str = b.String()
+				}
 			} else {
 				reply_str := fmt.Sprintf("TODO: raw_msg:\n%v\n", cmd)
 				log.Println(reply_str)
 			}
-			switch cmd {
-			case "/gen":
-				log.Println(cmd, arg)
-				out, err := RunFliGen("./input.txt", arg)
-				if err != nil {
-					log.Fatal(err)
-					continue
-				}
-				log.Printf("output is:\n%s\n", out)
-				reply_str = string(out)
-			case "/whoami":
-				b.Reset()
-				b.WriteString("You are: ")
-				b.WriteString(update.Message.From.FirstName)
-				id_str := strconv.Itoa(update.Message.From.ID)
-				b.WriteString(id_str)
-				reply_str = b.String()
+			if strings.HasPrefix(cmd, "БУВ:") {
+				use_keeper = 0
+			} else if strings.HasPrefix(cmd, "СУВ:") {
+				use_keeper = 1
 			}
+			if use_keeper == -1 {
+				err := "Используй кнопки внизу"
+				log.Println(err)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, err)
+				msg.ReplyMarkup = numericKeyboard
+				bot.Send(msg)
+				continue
+			}
+			var balance_type int = -1
+			if strings.HasSuffix(cmd, ":Атака") {
+				balance_type = 0
+			} else if strings.HasSuffix(cmd, ":Защита") {
+				balance_type = 1
+			} else if strings.HasSuffix(cmd, ":Пас") {
+				balance_type = 2
+			} else if strings.HasSuffix(cmd, ":Скорость") {
+				balance_type = 3
+			} else if strings.HasSuffix(cmd, ":Возраст") {
+				balance_type = 4
+			}
+			arg2 := strconv.Itoa(use_keeper)
+			arg3 := strconv.Itoa(balance_type)
+			out, err := RunFliGen("./input.txt", arg2, arg3)
+			if err != nil {
+				log.Fatal(err)
+				continue
+			}
+			log.Printf("output is:\n%s\n", out)
+			reply_str = string(out)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply_str)
+			msg.ReplyMarkup = numericKeyboard
 			bot.Send(msg)
 
 		} else {

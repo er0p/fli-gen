@@ -5,7 +5,7 @@ set -x
 
 rm input.txt
 ./curl.sh
-
+echo $@ >> ./res.txt
 ./fli-gen $@ | tee -a ./res.txt
 
 exit 0

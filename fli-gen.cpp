@@ -23,7 +23,7 @@
 
 #define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 
-#define VERSION_STR "2.8.3"
+#define VERSION_STR "2.9.2"
 
 using namespace std;
 
@@ -49,6 +49,14 @@ enum Role {
 	FORWARD,
 	UNIVERSAL,
 	NR
+};
+enum Indicator {
+	IND_ATTACK_SKILL = 0,
+	IND_DEFEND_SKILL,
+	IND_PASS_SKILL,
+	IND_PHYS_COND,
+	IND_AGE,
+	IND_NR,
 };
 
 string role_to_str(int r) {
@@ -89,17 +97,37 @@ string roles_to_str(set<int> &roles) {
 	return res;
 }
 
+string ind_type_to_str(int type) {
+	string res = "";
+	switch((enum Role)type) {
+		case IND_ATTACK_SKILL:
+			res = "Навыки атаки";
+			break;
+		case IND_DEFEND_SKILL:
+			res = "Навыки защиты";
+			break;
+		case IND_PASS_SKILL:
+			res = "Навыки паса";
+			break;
+		case IND_PHYS_COND:
+			res = "Скорость";
+			break;
+		case IND_AGE:
+			res = "Возраст";
+			break;
+
+	};
+	return res;
+};
+
 class Player {
 	public:
-		Player() : _as(0), _ds(0), _ps(0), _pc(0), _name(""), _id(-1), _rate(0.0), _first_name("") {}
+		Player() : _pi{0}, _name(""), _id(-1), _rate(0.0), _first_name("") {}
 		int _id;
 		double _rate;
 		string _name;
 		string _first_name;
-		int _as; // attacking skill
-		int _ds; // defending skill
-		int _ps; // passing skill
-		int _pc; // physical condition 
+		int _pi[IND_NR];
 		set<int> _roles;
 		void self_print() {
 			//cout << "id: " << _id << " rate: " << _rate << " name: " << _name << endl;
@@ -108,24 +136,42 @@ class Player {
 		bool is_keeper() {
 			return _roles.find(KEEPER) != _roles.end();
 		}
+		void revoke_keeper() {
+			_roles.erase(KEEPER);
+		}
 		void pretty_self_print(int i) {
 			string player_str = ( to_string(i) + ". " +  _name + " "  +  _first_name);
 			int glyphs = wstring_convert< codecvt_utf8<char32_t>, char32_t >().from_bytes(player_str).size();
 			int str_size = player_str.size();
 			cout << player_str;
 			cout <<  setw(22 - glyphs) << cout.fill(' ');
-			cout <<  " (" << fixed << setprecision(2) <<  _rate << ", " << _pc << ")"  <<  endl;
+			cout <<  " (" << fixed << setprecision(2) <<  _rate << ", " << _pi[IND_DEFEND_SKILL] << ", " <<
+				_pi[IND_ATTACK_SKILL] << ", " <<
+				_pi[IND_PASS_SKILL] << ", " <<
+				_pi[IND_PHYS_COND] << ", "  << 
+				_pi[IND_AGE] << ")"  <<  endl;
 		}
 };
 
 	class Team {
 		public:
-			Team(string name) : _name(name) {
+			int _selected_indicator;
+			Team(string name, int ind_type) : _name(name), _selected_indicator(ind_type) {
 			}
 
 			void pretty_self_print() {
 				int cnt = 0;
-				cout << _name << " ( Рейтинг: " << _rate << ", ОФП: " << this->_sum_phys_cond << " ) "  << endl;
+				double mean_age = ((double)calc_by(IND_AGE)) / 7.0;
+				int ds = calc_by(IND_DEFEND_SKILL);
+				int as = calc_by(IND_ATTACK_SKILL);
+				int ps = calc_by(IND_PASS_SKILL);
+				int pc = calc_by(IND_PHYS_COND);
+				cout << _name << " ( Рейтинг: " << _rate << ", " <<
+				       	 " ЗАЩ: " << ds <<
+				       	 " НАП: " << as <<
+				       	 " ПАС: " << ps <<
+				       	 " СКР: " << pc <<
+					", средний возраст: " << fixed << setprecision(1) << mean_age <<  " ) "  << endl;
 				for(auto it = _map.begin(); it != _map.end(); ++it) {
 					(*it)->pretty_self_print(++cnt);
 				}
@@ -158,6 +204,10 @@ class Player {
 			}
 			calc_rate();
 		}
+		void erase() {
+			_map.clear();
+			calc_rate();
+		}
 		double calc_rate() {
 			_rate = 0.0;
 			memset(_role_stat, 0, sizeof _role_stat);
@@ -176,17 +226,21 @@ class Player {
 			}
 			return _rate;
 		}
-		int calc_phys_cond() {
-			_sum_phys_cond = 0;
+		int calc_by(int type) {
+			int _sum = 0;
 			for(auto it = _map.begin(); it != _map.end(); ++it) {
-				_sum_phys_cond += (*it)->_pc;
+				if((*it)->is_keeper())
+					continue;
+				_sum += (*it)->_pi[type];
 			}
-			return _sum_phys_cond;
+			_indicator[type] = _sum;
+			return _indicator[type];
 		}
 
 		//map<int, class Player *> _map;
 		set<class Player *> _map;
 		double _rate;
+		int _indicator[IND_NR];
 		int _sum_phys_cond;
 	private:
 		string _name;
@@ -205,9 +259,10 @@ struct less_than_key {
 
 class FliGen {
 	public:
-		FliGen() : _team0 ("Красные"), _team1 ("Лазурные") {
+		int _selected_indicator;
+		FliGen(int ind_type, bool keep_excl) : _team0 ("Красные", ind_type), _team1 ("Лазурные", ind_type), _selected_indicator(ind_type), _keep_excl(keep_excl) {
 		};
-		FliGen(string t0_name, string t1_name) : _team0(t0_name), _team1(t1_name) {
+		FliGen(string t0_name, string t1_name, int ind_type, bool keep_excl) : _team0(t0_name, ind_type), _team1(t1_name, ind_type), _keep_excl(keep_excl) {
 		};
 		virtual ~FliGen() {
 			cout << __FUNCTION__ << endl;
@@ -216,7 +271,7 @@ class FliGen {
 			}
 		}
 
-		int parseFile(string &path, bool keep_excl) {
+		int parseFile(string &path) {
 			//int count_words(const char* str) {
 			auto count_words = [](const char* str) {
 				if (str == NULL)
@@ -244,8 +299,8 @@ class FliGen {
 				char buf[1024];
 				double rate = 0;
 				double sum = 0;
-				string role, name, fname;
-				string as , ds , ps , pc ;
+				string role, name, fname, birth_date;
+				string as , ds , ps , pc;
 				bool keeper_fl = false;
 				size_t keeper_count = 0;
 				size_t total_count = 0;
@@ -258,13 +313,16 @@ class FliGen {
 					if(0 >= wrd_cnt) {
 						//cout << "empty string" << endl;
 						continue;
-					} else if(5 == wrd_cnt) {
-						if(!(iss >> key >> rate >> role >> name >> fname)) { break; } ;
-					} else if( 9 == wrd_cnt) {
-						if(!(iss >> key >> rate >> role >> name >> fname >> as >> ds >> ps >> pc)) { break; } ;
-					} else {
-						cout << "incorrect input format" << endl; 
 					}
+					if(wrd_cnt >= 5) {
+						if(!(iss >> key >> rate >> role >> name >> fname)) { break; } ;
+					}
+					if(wrd_cnt >= 9) {
+						if(!(iss >> as >> ds >> ps >> pc)) { break; } ;
+					} 
+					if(wrd_cnt >= 10) {
+						if(!(iss >> birth_date)) { break; } ;
+					} 
 #endif
 					//while(in >> key >> rate >> role >> name >> fname >> as >> ds >> ps >> pc) 
 					Player *pl = new Player();
@@ -290,12 +348,35 @@ class FliGen {
 							return -3;
 						}
 					};
-					_stoi(as, &pl->_as);
-					_stoi(ds, &pl->_ds);
-					_stoi(ps, &pl->_ps);
-					_stoi(pc, &pl->_pc);
+
+					_stoi(as, &pl->_pi[IND_ATTACK_SKILL]);
+					_stoi(ds, &pl->_pi[IND_DEFEND_SKILL]);
+					_stoi(ps, &pl->_pi[IND_PASS_SKILL]);
+					_stoi(pc, &pl->_pi[IND_PHYS_COND]);
+					if(!birth_date.empty()) {
+						struct tm tm{0};
+						int bdy = -1;
+						//std::string s("32/02/2013");	
+						if(birth_date.find('/') == string::npos && 0 == _stoi(birth_date, &bdy)) {
+							//std::cout << "date is valid (year)" << std::endl;
+							tm.tm_year = bdy - 1900;
+						} else if(strptime(birth_date.c_str(), "%m/%d/%Y", &tm)) {
+							//std::cout << "date is valid (m/d/Y)" << std::endl;
+							bdy = tm.tm_year + 1900;
+						} else {
+							std::cout << "date is invalid" << std::endl;
+						}
+						if(bdy >= 0) {
+							time_t bd_time = mktime(&tm);
+							time_t curr_time = std::time(nullptr);
+							double diff_sec = std::difftime(curr_time, bd_time);
+							pl->_pi[IND_AGE] = floor(diff_sec/31536000.0);
+							//cout << "Player " << name << " has a birthday: " << birth_date << " year of BD: " << bdy << " diff: " <<  pl->_pi[IND_AGE] <<  endl;
+						}
+					}
+
 					//cout << "attacking_skill = " << as << " defending_skill = " << ds << " passing_skill = " << ps << " phys_cond = " << pc << endl;
-					//cout << "as = " << pl->_as << " ds = " << pl->_ds << " ps = " << pl->_ps << " pc = " << pl->_pc << endl;
+//					cout << "as = " << pl->_pi[IND_ATTACK_SKILL] << " ds = " << pl->_pi[IND_DEFEND_SKILL] << " ps = " << pl->_pi[IND_PASS_SKILL] << " pc = " << pl->_pi[IND_PHYS_COND] << endl;
 					memset(buf, 0,1024);
 					strncpy(buf, role.c_str(), role.length());
 					char *pch = strtok(buf,",");
@@ -303,10 +384,8 @@ class FliGen {
 						enum Role r = parse_role(std::string(pch));
 						if(r == KEEPER && keeper_count < 2) {
 							keeper_fl = true;
-							if(keep_excl)
-								pl->_rate = 0.0;
-							else
-								pl->_rate = rate / 2;
+							pl->_rate = rate;
+							
 							pl->_roles.insert(KEEPER);
 							if(0 == _team0._map.size()) {
 								_team0.insert(pl);
@@ -327,8 +406,25 @@ class FliGen {
 					sum += rate;
 					total_count++;
 				}
+				if(keeper_count < 2) {
+					cout << "insufficient number of keepers" << endl;
+					Player *pl = NULL;
+					if(_team0._map.size()) {
+						pl = *_team0._map.begin();
+						pl->revoke_keeper();
+						pl->_roles.insert(UNIVERSAL);
+						_all_players.push_back(pl);	
+						_team0.erase();
+					} else {
+						pl = *_team1._map.begin();
+						pl->revoke_keeper();
+						pl->_roles.insert(UNIVERSAL);
+						_all_players.push_back(pl);
+						_team1.erase();
+					}
+				}
 				_avg_rate = sum / total_count;
-				//cout << endl << "sum: " << sum << " sum/2: " << sum/2.0 <<  " avg rate: " << _avg_rate <<  endl;
+				cout << endl << "sum: " << sum << " sum/2: " << sum/2.0 <<  " avg rate: " << _avg_rate <<  endl;
 			}
 			catch (std::ifstream::failure e) {
 				std::cerr << "Exception opening/reading/closing file\n";
@@ -346,10 +442,19 @@ class FliGen {
                 
 		void splitOfferV1() {
 			size_t cnt = 0;
+			bool fl, who_start = 0;
+			double r0, r1;
 			std::sort(_all_players.begin(), _all_players.end(), less_than_key());
-			//bool fl, who_start = true;
-			bool fl, who_start = (*_team0._map.begin())->_rate < (*_team1._map.begin())->_rate;
+			r0 = *_team0._map.begin() ? (*_team0._map.begin())->_rate : 0.0 ;
+			r1 = *_team1._map.begin() ? (*_team1._map.begin())->_rate : 0.0 ;
+			who_start = (r0 < r1);
 			for(auto it = _all_players.begin(); it != _all_players.end(); ++it, cnt++) {
+				if((*it)->is_keeper()) {
+					if(_keep_excl)
+						(*it)->_rate = 0.0;
+					else
+						(*it)->_rate = (*it)->_rate / 2.0;
+				}
 				fl = who_start ? cnt % 2 : !(cnt %2);
 				if(fl) {
 					_team0.insert(*it);
@@ -471,9 +576,10 @@ class FliGen {
 			vector<int> v(8);
 			generate(v.begin(), v.end(), bind(dist, gen));
 			for (auto i: v) {
+				//if((*it0)->is_keeper())
+				//	continue;
 				std::advance(it0, i);
-				if((*it0)->is_keeper())
-					continue;
+				
 				//cout << i << " " << (*it0)->_name << '\n';
 				for (auto it1 = t1->begin(); it1 != t1->end(); ++it1) {
 					if((*it1)->is_keeper())
@@ -503,34 +609,31 @@ class FliGen {
 			}
 		}
 
-		int rebalanceByPhysCond() {
-			int red_pc = _team0.calc_phys_cond();
-			int azure_pc = _team1.calc_phys_cond();
-			//cout << "azure pc = " << azure_pc << endl;
-			//cout << "red pc = " <<  red_pc << endl;
-			int team_delta_pc = azure_pc - red_pc;
-			//cout << "team delta pc = " <<  team_delta_pc << endl;
-			if(std::abs(team_delta_pc) > 1) {
+		int rebalance() {
+			int type = _selected_indicator;
+			int red_ind = _team0.calc_by(type);
+			int azure_ind = _team1.calc_by(type);
+			//cout << "azure pc = " << azure_ind << endl;
+			//cout << "red pc = " <<  red_ind << endl;
+			int team_delta_ind = azure_ind - red_ind;
+			//cout << "team delta pc = " <<  team_delta_ind << endl;
+			if(std::abs(team_delta_ind) > 1) {
 				double team_delta_rate = (_team0.calc_rate() - _team1.calc_rate());
 				//try to rebalance
-				//decltype (_team0._map) *t0;
-				//decltype (_team1._map) *t1;
-//				auto t0 = &(_team1._map);
-//				auto t1 = &(_team0._map);
 				for (auto it0 = _team0._map.begin(); it0 != _team0._map.end(); ++it0) {
 					for (auto it1 = _team1._map.begin(); it1 != _team1._map.end(); ++it1) {
 						if((*it0)->is_keeper() || (*it1)->is_keeper())
 							continue;
 						double cur_del = ((*it0)->_rate - (*it1)->_rate) - (team_delta_rate/2.0);
-						int player_delta_pc = (*it0)->_pc - (*it1)->_pc;
+						int player_delta_ind = (*it0)->_pi[type] - (*it1)->_pi[type];
 						//cout << "cur_del = " << cur_del << endl;
 						int r0 = ROUND_2_INT(10.0*((*it0)->_rate));
 						int r1 = ROUND_2_INT(10.0*((*it1)->_rate));
 						bool equal = r0 == r1;
-						//cout << "equal = " << (equal ? "true" : "false") << " player_delta_pc = " << player_delta_pc << endl;
-						if(equal && player_delta_pc) {
-							if((player_delta_pc < 0 && team_delta_pc > 0) || (player_delta_pc > 0 && team_delta_pc < 0)) {
-								//cout << " swap players: " << (*it1)->_name << " and " << (*it0)->_name << " player delta pc = " << player_delta_pc << endl;
+						//cout << "equal = " << (equal ? "true" : "false") << " player_delta_ind = " << player_delta_ind << endl;
+						if(equal && player_delta_ind) {
+							if((player_delta_ind < 0 && team_delta_ind > 0) || (player_delta_ind > 0 && team_delta_ind < 0)) {
+								//cout << " swap players: " << (*it1)->_name << " and " << (*it0)->_name << " player delta pc = " << player_delta_ind << endl;
 								switch_players(&_team0, &_team1,  *it0, *it1);
 								//cout << "rebalance pc: "<< _team1.calc_phys_cond() <<  " : " << _team0.calc_phys_cond() << endl;
 								return 2;
@@ -546,8 +649,8 @@ class FliGen {
 		}
 
 		void prettyPrintResult(bool keep_excl) {
-			_team0.calc_phys_cond();
-			_team1.calc_phys_cond();
+			_team0.calc_by(_selected_indicator);
+			_team1.calc_by(_selected_indicator);
 			std::chrono::time_point<std::chrono::system_clock> time_now = std::chrono::system_clock::now();
 			std::time_t time_now_t = std::chrono::system_clock::to_time_t(time_now);
 			std::tm now_tm = *std::localtime(&time_now_t);
@@ -563,7 +666,7 @@ class FliGen {
 				cout << " ( Рейтинг вратаря уполовинивается ) " << endl;
 			else
 				cout << " ( Рейтинг вратаря принимается равным нулю ) " << endl;
-			cout <<  endl;
+			cout << "Балансировка выполнена по показателю: " << ind_type_to_str(_selected_indicator) << "\n\n";
 			_team1.pretty_self_print();
 			cout << endl;
 			_team0.pretty_self_print();
@@ -597,6 +700,7 @@ class FliGen {
 		//map<int, class Player> _team0, _team1;
 		Team _team0, _team1;
 		vector<class Player *> _all_players;
+		bool _keep_excl;
 };
 
 
@@ -618,14 +722,22 @@ void print_version(char *app_0) {
 
 int main(int argc, char *argv[]) {
 	string input_file;
-	FliGen fligen;
 	if(argc > 1) {
 		input_file = string(argv[1]);
 	} else {
 		input_file = "input.txt";
 	}
-	bool keep_excl = argc > 2;
-	if(fligen.parseFile(input_file, keep_excl)) {
+	int how_to_balance = IND_PHYS_COND;
+	bool keep_excl = false;
+	if(argc > 2) {
+		keep_excl = !(atoi(argv[2]));
+	}
+	if(argc > 3) {
+		how_to_balance = atoi(argv[3]);
+		//cout << "Chosed method: " << ind_type_to_str(how_to_balance) << "\n";
+	}
+	FliGen fligen(how_to_balance, keep_excl);
+	if(fligen.parseFile(input_file)) {
 		cout << "error parsing input file\n";
 		exit(13);
 	}
@@ -634,13 +746,14 @@ int main(int argc, char *argv[]) {
 	fligen.shake();
 	
 	int num_tries = 0;
-	while(0 != fligen.rebalanceByPhysCond()) {
+	while(0 != fligen.rebalance()) {
 		if( ++num_tries > 100)
 			break;
 	}
-	fligen.printResult();
 
-	print_version(argv[0]);
 
 	fligen.prettyPrintResult(keep_excl);
+	print_version(argv[0]);
+	fligen.printResult();
+
 }
