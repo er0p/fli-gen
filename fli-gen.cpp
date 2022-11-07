@@ -23,7 +23,7 @@
 
 #define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 
-#define VERSION_STR "2.9.2"
+#define VERSION_STR "2.9.3"
 
 using namespace std;
 
@@ -500,9 +500,9 @@ class FliGen {
 							if(arg->is_keeper()) {
 								return false;
 							}
-							cout << "team1 player name: "  << arg->_name << '\n';
+							//cout << "team1 player name: "  << arg->_name << '\n';
 							double cur_del = ((*tmp)->_rate - arg->_rate) - (delta/2.0);
-							cout << (*tmp)->_rate - arg->_rate   <<  " == " << (delta/2.0) << '\n';
+							//cout << (*tmp)->_rate - arg->_rate   <<  " == " << (delta/2.0) << '\n';
 							bool ret = (cur_del > -0.05) && (cur_del < 0.05);
 							//cout << " ret: " << ret  <<  '\n';
 							return ret; 
