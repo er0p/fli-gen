@@ -202,28 +202,30 @@ class Player {
 			for(auto it = p->_roles.begin(); it != p->_roles.end(); ++it) {
 				_role_stat[*it]++;
 			}
-			calc_rate();
+			//calc_rate();
 		}
 		void erase() {
 			_map.clear();
-			calc_rate();
+			//calc_rate(_keep_excl);
 		}
-		double calc_rate() {
+		double calc_rate(bool keep_excl) {
 			_rate = 0.0;
 			memset(_role_stat, 0, sizeof _role_stat);
 			for(auto it = _map.begin(); it != _map.end(); ++it) {
-#if 0
-				bool is_in = (*it)->roles.find(element) != (*it)->roles.end();
+				bool is_in = (*it)->_roles.find(KEEPER) == (*it)->_roles.end();
 				if(is_in) {
-					cout << "skip keeper" << endl;
-					continue;
+					_rate += (*it)->_rate;
+				} else {
+					if(keep_excl)
+						_rate += ((*it)->_rate) / 2.0;
+					//cout << "skip keeper" << endl;
+					//continue;
 				}
-#endif
-				_rate += (*it)->_rate;
 				for(auto jt = (*it)->_roles.begin(); jt != (*it)->_roles.end(); ++jt) {
 					_role_stat[*jt]++;
 				}
 			}
+			//cout << "rate = " << _rate << endl;
 			return _rate;
 		}
 		int calc_by(int type) {
@@ -272,7 +274,6 @@ class FliGen {
 		}
 
 		int parseFile(string &path) {
-			//int count_words(const char* str) {
 			auto count_words = [](const char* str) {
 				if (str == NULL)
 					return -1;  // let the requirements define this...
@@ -293,7 +294,6 @@ class FliGen {
 			};
 
 			ifstream in(path);
-//			in.exceptions ( std::ifstream::failbit | std::ifstream::badbit );
 			try {
 				int key = 0;
 				char buf[1024];
@@ -308,7 +308,6 @@ class FliGen {
 				std::string line;
 				while (std::getline(in, line)) {
 					int wrd_cnt = count_words(line.c_str());
-					//cout << "count words = " << wrd_cnt <<  endl;
 					std::istringstream iss(line);
 					if(0 >= wrd_cnt) {
 						//cout << "empty string" << endl;
@@ -385,6 +384,7 @@ class FliGen {
 						if(r == KEEPER && keeper_count < 2) {
 							keeper_fl = true;
 							pl->_rate = rate;
+							//cout << pl->_name << endl;
 							
 							pl->_roles.insert(KEEPER);
 							if(0 == _team0._map.size()) {
@@ -448,7 +448,11 @@ class FliGen {
 			r0 = *_team0._map.begin() ? (*_team0._map.begin())->_rate : 0.0 ;
 			r1 = *_team1._map.begin() ? (*_team1._map.begin())->_rate : 0.0 ;
 			who_start = (r0 < r1);
+
+			//cout << (*_team0._map.begin())->_name << endl;	
+			//cout << (*_team1._map.begin())->_name << endl;	
 			for(auto it = _all_players.begin(); it != _all_players.end(); ++it, cnt++) {
+		//		cout << (*it)->_name << endl;	
 				if((*it)->is_keeper()) {
 					if(_keep_excl)
 						(*it)->_rate = 0.0;
@@ -474,7 +478,7 @@ class FliGen {
 			Team *tmp_team0 = &_team0;
 			Team *tmp_team1 = &_team1;
 
-			auto r0 = tmp_team0->calc_rate(), r1= tmp_team1->calc_rate();
+			auto r0 = tmp_team0->calc_rate(_keep_excl), r1= tmp_team1->calc_rate(_keep_excl);
 			if(r0 > r1) {
 				tmp_team0 = &_team1;
 				tmp_team1 = &_team0;
@@ -482,12 +486,12 @@ class FliGen {
 
 			auto tmp = tmp_team0->_map.begin();
 
-			delta = (tmp_team0->calc_rate() - tmp_team1->calc_rate());
+			delta = (tmp_team0->calc_rate(_keep_excl) - tmp_team1->calc_rate(_keep_excl));
 //			cout << "delta = " << delta << endl;
 			if(0 == (ROUND_2_INT(10.0*delta) % 2)) {
 				//cout << "even case delta: " << delta << endl;
 				while(tmp != tmp_team0->_map.end()) {
-					if((*tmp)->is_keeper()) {
+					if(_keep_excl && (*tmp)->is_keeper()) {
 						tmp++;
 						continue;
 					}
@@ -496,9 +500,9 @@ class FliGen {
 							if(arg->is_keeper()) {
 								return false;
 							}
-							//cout << "team1 palyer name: "  << arg->_name << '\n';
+							cout << "team1 player name: "  << arg->_name << '\n';
 							double cur_del = ((*tmp)->_rate - arg->_rate) - (delta/2.0);
-							//cout << (*tmp)->_rate - arg->_rate   <<  " == " << (delta/2.0) << '\n';
+							cout << (*tmp)->_rate - arg->_rate   <<  " == " << (delta/2.0) << '\n';
 							bool ret = (cur_del > -0.05) && (cur_del < 0.05);
 							//cout << " ret: " << ret  <<  '\n';
 							return ret; 
@@ -511,8 +515,8 @@ class FliGen {
 						switch_players(tmp_team0, tmp_team1, *tmp, *it);
 						
 						tmp = tmp_team0->_map.begin();
-		                                //cout << "t0: " << tmp_team0.calc_rate() << " t1: " <<  tmp_team1.calc_rate() << endl;
-		                                tmp_team0->calc_rate();tmp_team1->calc_rate();
+		                                tmp_team0->calc_rate(_keep_excl);tmp_team1->calc_rate(_keep_excl);
+		                                //cout << "t0: " << tmp_team0->calc_rate() << " t1: " <<  tmp_team1->calc_rate() << endl;
 						break;
 					} else {
 						tmp++;
@@ -522,7 +526,7 @@ class FliGen {
 
 				//cout << "eve " << abs(10.0*delta) <<  " "  <<((int)(10.0*delta)) << " " <<  ((10.0*delta)) % 2 << endl;
 				while(tries++ < 99 && tmp != tmp_team0->_map.end() && abs(delta) >= 0.2) {
-					if((*tmp)->is_keeper()) {
+					if(_keep_excl && (*tmp)->is_keeper()) {
 						tmp++;
 						continue;
 					}
@@ -549,7 +553,7 @@ class FliGen {
 					} else {
 						tmp++;
 					}
-					delta = tmp_team0->calc_rate() - tmp_team1->calc_rate();
+					delta = tmp_team0->calc_rate(_keep_excl) - tmp_team1->calc_rate(_keep_excl);
 				} 
 //				cout << endl << "total tries (permutations) = " << tries << endl;
 //				if(tries < 100) 
@@ -557,6 +561,7 @@ class FliGen {
 			}
 		}
 		void switch_players(Team *t0, Team *t1, Player *p0, Player *p1) {
+		//	cout << p0->_name << " and " << p1->_name << endl;
 			//Player *p1 = *tmp, *p2 = *it;
 			//Player *p1 = *tmp, *p2 = *it;
 			t0->_map.erase(p0);
@@ -568,7 +573,7 @@ class FliGen {
 			auto *t0 = &(_team0._map);
 			auto *t1 = &(_team1._map);
 			auto it0 = t0->begin();
-			double delta = (_team0.calc_rate() - _team1.calc_rate());
+			double delta = (_team0.calc_rate(_keep_excl) - _team1.calc_rate(_keep_excl));
 			//auto it1 = t1->begin;
 			random_device rd;
 			mt19937 gen(rd());
@@ -576,9 +581,9 @@ class FliGen {
 			vector<int> v(8);
 			generate(v.begin(), v.end(), bind(dist, gen));
 			for (auto i: v) {
-				//if((*it0)->is_keeper())
-				//	continue;
 				std::advance(it0, i);
+				if((*it0)->is_keeper())
+					continue;
 				
 				//cout << i << " " << (*it0)->_name << '\n';
 				for (auto it1 = t1->begin(); it1 != t1->end(); ++it1) {
@@ -596,8 +601,6 @@ class FliGen {
 					}
 				}
 				it0 = t0->begin();
-				//delta = t0->calc_rate() - t1->calc_rate(); 
-				//
 				auto func  = [](std::set<class Player *> *set_ptr ) {
 					double _ret = 0.0;
 					for(auto it = set_ptr->begin(); it != set_ptr->end(); ++it) {
@@ -618,7 +621,7 @@ class FliGen {
 			int team_delta_ind = azure_ind - red_ind;
 			//cout << "team delta pc = " <<  team_delta_ind << endl;
 			if(std::abs(team_delta_ind) > 1) {
-				double team_delta_rate = (_team0.calc_rate() - _team1.calc_rate());
+				double team_delta_rate = (_team0.calc_rate(_keep_excl) - _team1.calc_rate(_keep_excl));
 				//try to rebalance
 				for (auto it0 = _team0._map.begin(); it0 != _team0._map.end(); ++it0) {
 					for (auto it1 = _team1._map.begin(); it1 != _team1._map.end(); ++it1) {
@@ -742,6 +745,7 @@ int main(int argc, char *argv[]) {
 		exit(13);
 	}
 
+	//fligen.splitOfferV1();
 	fligen.splitOfferV2();
 	fligen.shake();
 	
