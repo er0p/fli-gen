@@ -18,6 +18,8 @@ import (
 	//	"github.com/tidwall/gjson"
 )
 
+import "C"
+
 var g_debug bool
 
 const guest_log_filename = "guest.log"
@@ -26,9 +28,9 @@ func main() {
 
 	var d_mode bool
 	cntxt := &daemon.Context{
-		PidFileName: "/home/er0p/wrk/src/fli-gen/pid",
+		PidFileName: "/root/src/fli-gen/pid",
 		PidFilePerm: 0644,
-		LogFileName: "/home/er0p/wrk/src/fli-gen/log",
+		LogFileName: "/root/src/fli-gen/log",
 		LogFilePerm: 0640,
 		WorkDir:     "",
 		Umask:       027,
@@ -75,6 +77,9 @@ var numericKeyboard = tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButton("СУВ:Пас"),
 		tgbotapi.NewKeyboardButton("СУВ:Скорость"),
 		tgbotapi.NewKeyboardButton("СУВ:Возраст")),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton("СУВ"),
+		tgbotapi.NewKeyboardButton("БУВ")),
 )
 
 func FliGenBot() {
@@ -181,9 +186,9 @@ func FliGenBot() {
 				reply_str := fmt.Sprintf("TODO: raw_msg:\n%v\n", cmd)
 				log.Println(reply_str)
 			}
-			if strings.HasPrefix(cmd, "БУВ:") {
+			if strings.HasPrefix(cmd, "БУВ") {
 				use_keeper = 0
-			} else if strings.HasPrefix(cmd, "СУВ:") {
+			} else if strings.HasPrefix(cmd, "СУВ") {
 				use_keeper = 1
 			}
 			if use_keeper == -1 {
@@ -206,9 +211,14 @@ func FliGenBot() {
 			} else if strings.HasSuffix(cmd, ":Возраст") {
 				balance_type = 4
 			}
+			var shake int = 1;
+			if -1 == balance_type {
+				shake = 0
+			}
 			arg2 := strconv.Itoa(use_keeper)
 			arg3 := strconv.Itoa(balance_type)
-			out, err := RunFliGen("./input.txt", arg2, arg3)
+			arg4 := strconv.Itoa(shake)
+			out, err := RunFliGen("./input.txt", arg2, arg3, arg4)
 			if err != nil {
 				log.Fatal(err)
 				continue

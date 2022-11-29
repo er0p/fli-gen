@@ -56,6 +56,7 @@ enum Indicator {
 	IND_PASS_SKILL,
 	IND_PHYS_COND,
 	IND_AGE,
+	IND_OVERALL,
 	IND_NR,
 };
 
@@ -114,6 +115,9 @@ string ind_type_to_str(int type) {
 			break;
 		case IND_AGE:
 			res = "Возраст";
+			break;
+		case IND_OVERALL:
+			res = "Интегральный показатель";
 			break;
 
 	};
@@ -479,6 +483,8 @@ class FliGen {
 			Team *tmp_team1 = &_team1;
 
 			auto r0 = tmp_team0->calc_rate(_keep_excl), r1= tmp_team1->calc_rate(_keep_excl);
+			//cout << "r0 = " << r0 << endl;
+			//cout << "r1 = " << r1 << endl;
 			if(r0 > r1) {
 				tmp_team0 = &_team1;
 				tmp_team1 = &_team0;
@@ -487,8 +493,9 @@ class FliGen {
 			auto tmp = tmp_team0->_map.begin();
 
 			delta = (tmp_team0->calc_rate(_keep_excl) - tmp_team1->calc_rate(_keep_excl));
-//			cout << "delta = " << delta << endl;
-			if(0 == (ROUND_2_INT(10.0*delta) % 2)) {
+			//cout << "delta = " << delta << endl;
+			//if(0 == (ROUND_2_INT(10.0*delta) % 2)) {
+			if((int)delta != 0) {
 				//cout << "even case delta: " << delta << endl;
 				while(tmp != tmp_team0->_map.end()) {
 					if(_keep_excl && (*tmp)->is_keeper()) {
@@ -503,7 +510,8 @@ class FliGen {
 							//cout << "team1 player name: "  << arg->_name << '\n';
 							double cur_del = ((*tmp)->_rate - arg->_rate) - (delta/2.0);
 							//cout << (*tmp)->_rate - arg->_rate   <<  " == " << (delta/2.0) << '\n';
-							bool ret = (cur_del > -0.05) && (cur_del < 0.05);
+							//cout << "cur_del == "   << cur_del << '\n';
+							bool ret = (cur_del > -1) && (cur_del < 1);
 							//cout << " ret: " << ret  <<  '\n';
 							return ret; 
 							}
@@ -516,7 +524,7 @@ class FliGen {
 						
 						tmp = tmp_team0->_map.begin();
 		                                tmp_team0->calc_rate(_keep_excl);tmp_team1->calc_rate(_keep_excl);
-		                                //cout << "t0: " << tmp_team0->calc_rate() << " t1: " <<  tmp_team1->calc_rate() << endl;
+		                                //cout << "t0: " << tmp_team0->calc_rate(_keep_excl) << " t1: " <<  tmp_team1->calc_rate(_keep_excl) << endl;
 						break;
 					} else {
 						tmp++;
@@ -669,6 +677,9 @@ class FliGen {
 				cout << " ( Рейтинг вратаря уполовинивается ) " << endl;
 			else
 				cout << " ( Рейтинг вратаря принимается равным нулю ) " << endl;
+			//if ( IND_OVERALL == _selected_indicator )
+			//	cout << "Балансировка выполнена по общему показателю. \n\n";
+			//else
 			cout << "Балансировка выполнена по показателю: " << ind_type_to_str(_selected_indicator) << "\n\n";
 			_team1.pretty_self_print();
 			cout << endl;
@@ -732,12 +743,17 @@ int main(int argc, char *argv[]) {
 	}
 	int how_to_balance = IND_PHYS_COND;
 	bool keep_excl = false;
+	bool shake = true;
 	if(argc > 2) {
 		keep_excl = !(atoi(argv[2]));
 	}
 	if(argc > 3) {
 		how_to_balance = atoi(argv[3]);
 		//cout << "Chosed method: " << ind_type_to_str(how_to_balance) << "\n";
+	}
+	if(argc > 4) {
+		shake = atoi(argv[4]);
+		how_to_balance = IND_OVERALL;
 	}
 	FliGen fligen(how_to_balance, keep_excl);
 	if(fligen.parseFile(input_file)) {
@@ -747,12 +763,14 @@ int main(int argc, char *argv[]) {
 
 	//fligen.splitOfferV1();
 	fligen.splitOfferV2();
-	fligen.shake();
+	if(shake) {
+		fligen.shake();
 	
-	int num_tries = 0;
-	while(0 != fligen.rebalance()) {
-		if( ++num_tries > 100)
-			break;
+		int num_tries = 0;
+		while(0 != fligen.rebalance()) {
+			if( ++num_tries > 100)
+				break;
+		}
 	}
 
 
