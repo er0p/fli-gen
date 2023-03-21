@@ -18,7 +18,7 @@ defending_skill=$(curl -s -X GET "https://sheets.googleapis.com/v4/spreadsheets/
 attack_skill=$(curl -s -X GET "https://sheets.googleapis.com/v4/spreadsheets/${sheetID}/values/'Игроки'!G:G?key=${key}&majorDimension=COLUMNS")
 passing_skill=$(curl -s -X GET "https://sheets.googleapis.com/v4/spreadsheets/${sheetID}/values/'Игроки'!H:H?key=${key}&majorDimension=COLUMNS")
 phys_cond=$(curl -s -X GET "https://sheets.googleapis.com/v4/spreadsheets/${sheetID}/values/'Игроки'!I:I?key=${key}&majorDimension=COLUMNS")
-birthday=$(curl -s -X GET "https://sheets.googleapis.com/v4/spreadsheets/${sheetID}/values/'Игроки'!N:N?key=${key}&majorDimension=COLUMNS")
+birthday=$(curl -s -X GET "https://sheets.googleapis.com/v4/spreadsheets/${sheetID}/values/'Игроки'!O:O?key=${key}&majorDimension=COLUMNS")
 
 #curl -X GET "https://sheets.googleapis.com/v4/spreadsheets/${sheetID}?key=${key}&fields=sheets.properties"
 
@@ -56,4 +56,5 @@ do
 	player=$(echo $players | jq  ".values[0]" | jq  ".[$i]" | sed "s/^\"//g" | sed "s/\"$//" | awk '{print $1" "$2}')
 	#echo $id $rate $role $player | tee -a input.txt
 	echo $id $rate $role $player $as $ds $ps $pc $bd >>  input.txt
+	#echo $id"|"$rate"|"$role"|"$player"|"$as"|"$ds"|"$ps"|"$pc"|"$bd >>  input.txt
 done

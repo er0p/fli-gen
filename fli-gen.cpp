@@ -23,7 +23,7 @@
 
 #define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 
-#define VERSION_STR "2.10.0"
+#define VERSION_STR "2.11.0"
 
 using namespace std;
 
@@ -578,16 +578,30 @@ class FliGen {
 			t1->_map.insert(p0);
 		}
 		void shake() {
+			vector<int> v(8);
+			auto print = [&]
+			{
+			    for (std::cout << "v: "; auto iv: v)
+				std::cout << iv << " ";
+			    std::cout << "\n";
+			};
+			iota(v.begin(), v.end(), 0);
+			//print();
 			auto *t0 = &(_team0._map);
 			auto *t1 = &(_team1._map);
 			auto it0 = t0->begin();
 			double delta = (_team0.calc_rate(_keep_excl) - _team1.calc_rate(_keep_excl));
 			//auto it1 = t1->begin;
-			random_device rd;
-			mt19937 gen(rd());
-			uniform_int_distribution<> dist(0, t0->size() - 1);
-			vector<int> v(8);
-			generate(v.begin(), v.end(), bind(dist, gen));
+			//auto rd = std::random_device {};
+			//auto rng = std::default_random_engine { rd() };
+			//std::shuffle(std::begin(v), std::end(v), rng);
+			srand(unsigned(time(NULL)));
+			std::random_shuffle(std::begin(v), std::end(v));
+			//random_device rd;
+			//mt19937 gen(rd());
+			//uniform_int_distribution<> dist(0, t0->size() - 1);
+			//generate(v.begin(), v.end(), bind(dist, gen));
+			//print();
 			for (auto i: v) {
 				std::advance(it0, i);
 				if((*it0)->is_keeper())
