@@ -23,7 +23,7 @@
 
 #define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 
-#define VERSION_STR "2.11.0"
+#define VERSION_STR "2.12.0"
 
 using namespace std;
 
