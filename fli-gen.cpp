@@ -385,10 +385,11 @@ class FliGen {
 					char *pch = strtok(buf,",");
 					while (pch != NULL) {
 						enum Role r = parse_role(std::string(pch));
+
+						//cout << "Player " << name << " role: " << r <<  endl;
 						if(r == KEEPER && keeper_count < 2) {
 							keeper_fl = true;
 							pl->_rate = rate;
-							//cout << pl->_name << endl;
 							
 							pl->_roles.insert(KEEPER);
 							if(0 == _team0._map.size()) {
@@ -456,8 +457,8 @@ class FliGen {
 			//cout << (*_team0._map.begin())->_name << endl;	
 			//cout << (*_team1._map.begin())->_name << endl;	
 			for(auto it = _all_players.begin(); it != _all_players.end(); ++it, cnt++) {
-		//		cout << (*it)->_name << endl;	
 				if((*it)->is_keeper()) {
+					cout << (*it)->is_keeper() << endl;	
 					if(_keep_excl)
 						(*it)->_rate = 0.0;
 					else
@@ -497,14 +498,18 @@ class FliGen {
 			//if(0 == (ROUND_2_INT(10.0*delta) % 2)) {
 			if((int)delta != 0) {
 				//cout << "even case delta: " << delta << endl;
+				//cout << "_keep_excl: " << _keep_excl << endl;
 				while(tmp != tmp_team0->_map.end()) {
-					if(_keep_excl && (*tmp)->is_keeper()) {
+					//if(_keep_excl && (*tmp)->is_keeper()) {
+					if((*tmp)->is_keeper()) {
 						tmp++;
 						continue;
 					}
 					//cout << "team0 palyer name: "  << (*tmp)->_name << '\n';
 					auto it = std::find_if(tmp_team1->_map.begin(), tmp_team1->_map.end(), [&tmp,&delta] (auto &arg) {
+							//cout << "arg->name:" << arg->_name << endl;
 							if(arg->is_keeper()) {
+								cout << arg->_name << endl;
 								return false;
 							}
 							//cout << "team1 player name: "  << arg->_name << '\n';
@@ -579,12 +584,14 @@ class FliGen {
 		}
 		void shake() {
 			vector<int> v(8);
+			/*
 			auto print = [&]
 			{
 			    for (std::cout << "v: "; auto iv: v)
 				std::cout << iv << " ";
 			    std::cout << "\n";
 			};
+			*/
 			iota(v.begin(), v.end(), 0);
 			//print();
 			auto *t0 = &(_team0._map);
@@ -652,8 +659,11 @@ class FliGen {
 						double cur_del = ((*it0)->_rate - (*it1)->_rate) - (team_delta_rate/2.0);
 						int player_delta_ind = (*it0)->_pi[type] - (*it1)->_pi[type];
 						//cout << "cur_del = " << cur_del << endl;
-						int r0 = ROUND_2_INT(10.0*((*it0)->_rate));
-						int r1 = ROUND_2_INT(10.0*((*it1)->_rate));
+						//int r0 = ROUND_2_INT(10.0*((*it0)->_rate));
+						//int r1 = ROUND_2_INT(10.0*((*it1)->_rate));
+						int r0 = (*it0)->_rate;
+						int r1 = (*it1)->_rate;
+
 						bool equal = r0 == r1;
 						//cout << "equal = " << (equal ? "true" : "false") << " player_delta_ind = " << player_delta_ind << endl;
 						if(equal && player_delta_ind) {
