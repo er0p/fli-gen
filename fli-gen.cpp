@@ -23,7 +23,7 @@
 
 #define ROUND_2_INT(f) ((int)(f >= 0.0 ? (f + 0.5) : (f - 0.5)))
 
-#define VERSION_STR "2.12.0"
+#define VERSION_STR "2.12.1"
 
 using namespace std;
 
@@ -373,8 +373,10 @@ class FliGen {
 							time_t bd_time = mktime(&tm);
 							time_t curr_time = std::time(nullptr);
 							double diff_sec = std::difftime(curr_time, bd_time);
-							pl->_pi[IND_AGE] = floor(diff_sec/31536000.0);
-							//cout << "Player " << name << " has a birthday: " << birth_date << " year of BD: " << bdy << " diff: " <<  pl->_pi[IND_AGE] <<  endl;
+							double y_d = diff_sec/60.0/60.0/24.0/365.2425;
++                                                       //int fl_ye = std::round(diff_sec/31536000.0);
++                                                       pl->_pi[IND_AGE] = std::round(y_d);
++                                                      // cout << "Player " << name << " has a birthday: " << birth_date << " year of BD: " << bdy << " age: " <<  pl->_pi[IND_AGE] << " diff: " << (int)diff_sec << endl;
 						}
 					}
 
